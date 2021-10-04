@@ -1,0 +1,71 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library("ggpubr")
+library(LDATS)
+
+source("utils.R")
+```
+
+```{r}
+repl <- 0
+base_dir <- "D:\\skola\\1\\weighted_ensembles\\test_cifar_2021\\train_data"
+methods <- c("m1", "m2", "m2_iter", "bc")
+
+nets_outputs_path <- file.path(base_dir, repl, "outputs")
+val_training_ens_path <- file.path(base_dir, repl, "comb_outputs", "val_training")
+train_training_ens_path <- file.path(base_dir, repl, "comb_outputs", "train_training")
+
+nets_outputs <- load_network_outputs(nets_outputs_path)
+val_ens_outputs <- load_ensemble_outputs(val_training_ens_path, methods, precision = "float")
+train_ens_outputs <- load_ensemble_outputs(train_training_ens_path, methods, precision = "float")
+
+```
+
+```{r}
+classes <- dim(nets_outputs[["test_outputs"]])[3]
+nets_num <- length(nets_outputs[["networks"]])
+preds <- nets_outputs[["test_outputs"]]
+labs <- nets_outputs[["test_labels"]]
+for (class in 1:classes)
+{
+  for (net_i in 1:nets_num)
+  {
+    cur_preds <- preds[net_i, labs == (class - 1),]
+    cur_preds_prob <- softmax(cur_preds)
+    class_means <- colMeans(cur_preds_prob)
+    means_df <- data.frame(mean = class_means, class = 0:9)
+    means_df$class <- as.factor(means_df$class)
+    plot <- ggplot() + 
+      geom_bar(data=means_df, mapping=aes(x=class, y=mean), stat="identity") +
+      ggtitle(paste("Network", nets_outputs[["networks"]][net_i], "averaged outputs for correct class", class - 1))
+    print(plot)
+  }
+}
+```
+
+Val trained ensembles
+```{r}
+for (class in 1:classes)
+{
+  for (method in methods)
+  {
+    method_name <- paste(method, "float", sep = "_")
+    cur_preds <- val_ens_outputs[[method_name]][labs == (class - 1),]
+    class_means <- colMeans(cur_preds)
+    means_df <- data.frame(mean = class_means, class = 0:9)
+    means_df$class <- as.factor(means_df$class)
+    plot <- ggplot() + 
+      geom_bar(data=means_df, mapping=aes(x=class, y=mean), stat="identity") +
+      ggtitle(paste("Pwc method", method_name, "averaged outputs for correct class", class - 1))
+    print(plot)
+  }
+}
+```
+

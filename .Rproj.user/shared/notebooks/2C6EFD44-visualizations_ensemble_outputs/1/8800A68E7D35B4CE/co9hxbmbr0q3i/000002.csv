@@ -1,0 +1,6 @@
+"0","repl <- 0"
+"0","base_dir <- ""D:\\skola\\1\\weighted_ensembles\\test_cifar_2021\\train_data"""
+"0",""
+"0",""
+"0","nets_outputs_path <- file.path(base_dir, repl, ""outputs"")"
+"0","nets_outputs <- load_network_outputs(nets_outputs_path)"

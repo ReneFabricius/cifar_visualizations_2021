@@ -1,0 +1,2 @@
+"0","net_results <- read.csv(""D:/skola/1/weighted_ensembles/test_cifar_2021/train_data/net_accuracies.csv"")"
+"0","ens_results <- read.csv(""D:/skola/1/weighted_ensembles/test_cifar_2021/train_data/ensemble_accuracies.csv"")"
