@@ -83,13 +83,13 @@ Accuracy differences seem to be normal.
 t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1, paired=TRUE)
 ```
 ```{r}
-t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1, paired=TRUE, alternative="greater")
+t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1, paired=TRUE, alternative="less")
 ```
 ```{r}
 t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, paired=TRUE)
 ```
 ```{r}
-t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, paired=TRUE, alternative="greater")
+t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, paired=TRUE, alternative="less")
 ```
 ```{r}
 t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter, paired=TRUE)

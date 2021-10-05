@@ -1,0 +1,2 @@
+"0","box_nll <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=nll)) + facet_wrap(~method)"
+"0","box_nll"

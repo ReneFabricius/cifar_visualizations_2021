@@ -1,0 +1,7 @@
+"0","differences <- data.frame(ens_results_wide$accuracy_vt_m1 - ens_results_wide$accuracy_tt_m1, ens_results_wide$accuracy_vt_m2 - ens_results_wide$accuracy_tt_m2,"
+"0","                          ens_results_wide$accuracy_vt_m2_iter - ens_results_wide$accuracy_tt_m2_iter, "
+"0","                          ens_results_wide$accuracy_vt_bc - ens_results_wide$accuracy_tt_bc,"
+"0","                          ens_results_wide$nll_vt_m1 - ens_results_wide$nll_tt_m1, ens_results_wide$nll_vt_m2 - ens_results_wide$nll_tt_m2,"
+"0","                          ens_results_wide$nll_vt_m2_iter - ens_results_wide$nll_tt_m2_iter, ens_results_wide$nll_vt_bc - ens_results_wide$nll_tt_bc)"
+"0","names(differences) <- c(""acc_diff_m1"", ""acc_diff_m2"", ""acc_diff_m2_iter"", ""acc_diff_bc"", ""nll_diff_m1"", ""nll_diff_m2"", ""nll_diff_m2_iter"", ""nll_diff_bc"")"
+"0","differences"
