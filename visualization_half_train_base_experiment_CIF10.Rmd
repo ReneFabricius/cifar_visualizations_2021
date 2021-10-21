@@ -1,6 +1,8 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "Validation set vs training set LDA training - Approach two CIFAR10"
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 ```{r}
@@ -10,32 +12,46 @@ library(tidyr)
 library("ggpubr")
 ```
 
+This experiment focuses on the question, whether training LDA on the same set of data as the neural networks were trained on has any adverse effects to the performance of the ensemble as opposed to training on a different set, not presented to the networks during the training.
+Experiment was performed with two slightly different approaches.
+
+Approach two
+Experiment code is in the file half_train_ensembling_experiment.py.
 Experiment on both CIFAR10 and CIFAR100 datasets.
-This experiment was performed in 10 replications for CIFAR100 and 1 replication for CIFAR10. Difference is due to different size of LDA training sets for each dataset. We use 50 samples per class for both datasets. Neural networks were trained on half of the original training set. The split was made randomly in each replication. Three neural networks were trained in each replication. These networks were then combined using WeightedLDAEnsemble. Original training set was then divided into folds, each of them cntaining 50 samples of each class. Half of these folds belongs to training set of the networks and half to the created validation set. In the experiment we compare the performance of ensemble between folds which belong to the training set and which belong to the validation set.
+This experiment differs from the previous one in the neural networks training part. In this case, the networks were trained on half of the original training set. The remainder of the training set was extracted as a validation set. This enabled us to train several ensembles on both the training set and the validation set in each replication. Experiment on CIFAR10 was performed in 1 replication and experimennt on CIFAR100 in 10 replications. This is due to 10 times more classes in CIFAR100 and thus a need for 10 times larger LDA training set in order to maintain constant 50 samples for class in LDA models training.
+
+Approach one is described in the file visualization_base_experiment.
+
 
 # CIFAR10
 
 ```{r}
-net_results <- read.csv("D:/skola/1/weighted_ensembles/test_cifar_2021/train_data_half/net_accuracies.csv")
-ens_results <- read.csv("D:/skola/1/weighted_ensembles/test_cifar_2021/train_data_half/ensemble_accuracies.csv")
+net_results <- read.csv("../data/data_train_val_half_c10/net_accuracies.csv")
+ens_results <- read.csv("../data/data_train_val_half_c10/ensemble_accuracies.csv")
 ```
 ```{r}
-box_acc <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=accuracy)) + facet_wrap(~method)
+box_acc <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=accuracy)) + facet_wrap(~method) +
+  ggtitle("Accuracy of ensembles trained on different train sets")
 box_acc
 ```
+Training on the same training data as the neural networks were trained on seems to provide better accuracy compared to training on separate validation set.
 
 ```{r}
-box_nll <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=nll)) + facet_wrap(~method)
+box_nll <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=nll)) + facet_wrap(~method) +
+  ggtitle("NLL of ensembles trained on different train sets")
 box_nll
 ```
+For some reason NLL has opposite trend to accuracy - train set with better accuracy has worse (larger) NLL. This needs some further attention.
 
 ```{r}
-box_net_acc <- ggplot() + geom_boxplot(data=net_results, mapping=aes(x=network, y=accuracy))
+box_net_acc <- ggplot() + geom_boxplot(data=net_results, mapping=aes(x=network, y=accuracy)) +
+  ggtitle("Accuracy of networks")
 box_net_acc
 ```
 
 ```{r}
-box_net_nll <- ggplot() + geom_boxplot(data=net_results, mapping=aes(x=network, y=nll))
+box_net_nll <- ggplot() + geom_boxplot(data=net_results, mapping=aes(x=network, y=nll)) +
+  ggtitle("NLL of networks")
 box_net_nll
 ```
 
@@ -44,60 +60,31 @@ ens_results_wide <- pivot_wider(ens_results, names_from = c(train_set, method), 
 ens_results_wide
 ```
 
-Testing statistical significance of difference for training on validation and train data
-Since ensembles in each replication are trained on the same set of networks, we use paired t-test.
+Testing statistical significance of difference for training on validation and train data.
+We have 50 samples from each distribution, so we will suppose the distributions are normal.
+
 
 ```{r}
-differences <- data.frame(ens_results_wide$accuracy_vt_m1 - ens_results_wide$accuracy_tt_m1, ens_results_wide$accuracy_vt_m2 - ens_results_wide$accuracy_tt_m2,
-                          ens_results_wide$accuracy_vt_m2_iter - ens_results_wide$accuracy_tt_m2_iter, 
-                          ens_results_wide$accuracy_vt_bc - ens_results_wide$accuracy_tt_bc,
-                          ens_results_wide$nll_vt_m1 - ens_results_wide$nll_tt_m1, ens_results_wide$nll_vt_m2 - ens_results_wide$nll_tt_m2,
-                          ens_results_wide$nll_vt_m2_iter - ens_results_wide$nll_tt_m2_iter, ens_results_wide$nll_vt_bc - ens_results_wide$nll_tt_bc)
-names(differences) <- c("acc_diff_m1", "acc_diff_m2", "acc_diff_m2_iter", "acc_diff_bc", "nll_diff_m1", "nll_diff_m2", "nll_diff_m2_iter", "nll_diff_bc")
-differences
-```
-
-Ascertaining normality of differences
-
-```{r}
-ggdensity(differences$acc_diff_m1, xlab="acc diff m1")
+t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1)
 ```
 
 ```{r}
-ggdensity(differences$acc_diff_m2, xlab="acc diff m2")
+t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1, alternative="less")
 ```
 
 ```{r}
-ggdensity(differences$acc_diff_m2_iter, xlab="acc diff m2_iter")
+t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2)
 ```
 
 ```{r}
-ggdensity(differences$acc_diff_bc, xlab="acc diff bc")
-```
-
-We have 50 samples, so we will consider the differences normal.
-
-```{r}
-t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1, paired=TRUE)
+t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, alternative="less")
 ```
 
 ```{r}
-t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1, paired=TRUE, alternative="less")
+t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter)
 ```
 
 ```{r}
-t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, paired=TRUE)
+t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc)
 ```
-
-```{r}
-t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, paired=TRUE, alternative="less")
-```
-
-```{r}
-t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter, paired=TRUE)
-```
-
-```{r}
-t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc, paired=TRUE)
-```
-
+For all coupling methods, we found, that ensemble models trained on subset (of size 500) of the neural networks training set have statistically significantly better accuracy than ensemble models trained on separate validation set (of the same size).

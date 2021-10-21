@@ -1,0 +1,173 @@
+---
+title: "Outputs inspection CIFAR10"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library("ggpubr")
+library(LDATS)
+library(stringr)
+
+source("utils.R")
+```
+Visualization on CIFAR10.
+We are using data of three neural networks trained on reduced CIFAR10 training set. These networks were trained in 30 replications.
+In each replication, 500 samples from the training set were randomly extracted and formed validation set. In each replication, we trained on the outputs of neural networks two ensembles. First was trained on randomly chosen subset, of size 500, of nn training set, second on the extracted validation set.
+In this visualization, we are trying to inspect the outputs deeper, mainly to make sense of strange behavior of nll metric for ensemble outputs.
+
+
+```{r}
+base_dir <- "../data/data_train_val_c10"
+repls <- 0:29
+
+nets_outputs <- load_network_outputs(base_dir, repls)
+ens_outputs <- load_ensemble_outputs(base_dir, repls)
+net_results <- read.csv(file.path(base_dir, "net_accuracies.csv"))
+ens_results <- read.csv(file.path(base_dir, "ensemble_accuracies.csv"))
+```
+
+
+For clearer visualization, we will plot just the predicted probability of the correct class for all the methods.
+
+```{r}
+classes <- dim(nets_outputs[["test_outputs"]])[4]
+nets_num <- length(nets_outputs[["networks"]])
+preds <- nets_outputs[["test_outputs"]]
+labs <- nets_outputs[["test_labels"]]
+network <- c()
+prediction <- c()
+replication <- c()
+for (ri in repls + 1)
+{
+  for (net_i in seq_along(nets_outputs[["networks"]]))
+  {
+    net_outputs_prob <- softmax(preds[ri, net_i, , ])
+    cur_pred <- c()
+    for (class in 1:classes)
+    {
+      class_probs <- net_outputs_prob[labs[ri, ] == (class - 1), class]
+      cur_pred <- c(cur_pred, class_probs)
+    }
+    network <- c(network, rep(nets_outputs[["networks"]][net_i], length(cur_pred)))
+    prediction <- c(prediction, cur_pred)
+  }
+  replication <- c(replication, rep(ri, length(prediction) - length(replication)))
+}
+
+networks_predictions <- data.frame(network, replication, prediction)
+
+```
+
+
+```{r}
+nets_cor_preds_box <- ggplot(data=networks_predictions) + geom_boxplot(mapping=aes(x=network, y=prediction)) + ylab("Correct class predicted probability")
+nets_cor_preds_box
+```
+Not very helpful.
+
+```{r}
+nets_cor_preds_histo <- ggplot(data=networks_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~network) + scale_y_log10()
+nets_cor_preds_histo
+```
+```{r}
+networks_nll <- ggplot(data=net_results) + geom_boxplot(mapping=aes(x=network, y=nll))
+networks_nll
+```
+Networks nll seems to have good correspondence with lowest prediction probability column in the previous histograms.
+
+```{r}
+classes <- dim(nets_outputs[["test_outputs"]])[4]
+labs <- nets_outputs[["test_labels"]]
+method <- c()
+prediction <- c()
+replication <- c()
+for (ri in repls + 1)
+{
+  for (m_i in seq_along(ens_outputs$methods))
+  {
+    cur_pred <- c()
+    for (class in 1:classes)
+    {
+      class_probs <- ens_outputs$val_training[ri, m_i, labs[ri, ] == (class - 1), class]
+      cur_pred <- c(cur_pred, class_probs)
+    }
+    method <- c(method, rep(ens_outputs$methods[m_i], length(cur_pred)))
+    prediction <- c(prediction, cur_pred)
+  }
+  replication <- c(replication, rep(ri, length(cur_pred) - length(replication)))
+}
+
+val_ens_predictions <- data.frame(method, replication, prediction)
+```
+
+```{r}
+val_ens_cor_preds_histo <- ggplot(data=val_ens_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on val")
+val_ens_cor_preds_histo
+```
+Coupling method bc seems to produce far less small probabilities for the correct class than m1 and m2.
+
+
+```{r}
+val_ens_zero_counts <- ggplot(data=val_ens_predictions[val_ens_predictions$prediction == 0, ]) + geom_histogram(mapping=aes(x=method), stat="count")
+val_ens_zero_counts
+```
+m2_iter and bc didn't produce any zero probability outputs in this replication.
+
+
+```{r}
+val_ens_nll <- ggplot(data=ens_results) + geom_boxplot(mapping=aes(x=method, y=nll)) + facet_wrap(~train_set)
+val_ens_nll
+```
+m2_iter and m2 nll are however almost identical, m2_iter produces some very small,  but not zero, probabilities.
+
+```{r}
+classes <- dim(nets_outputs[["test_outputs"]])[4]
+labs <- nets_outputs[["test_labels"]]
+method <- c()
+prediction <- c()
+replication <- c()
+for (ri in repls + 1)
+{
+  for (m_i in seq_along(ens_outputs$methods))
+  {
+    cur_pred <- c()
+    for (class in 1:classes)
+    {
+      class_probs <- ens_outputs$train_training[ri, m_i, labs[ri, ] == (class - 1), class]
+      cur_pred <- c(cur_pred, class_probs)
+    }
+    method <- c(method, rep(ens_outputs$methods[m_i], length(cur_pred)))
+    prediction <- c(prediction, cur_pred)
+  }
+  replication <- c(replication, rep(ri, length(cur_pred) - length(replication)))
+}
+
+train_ens_predictions <- data.frame(method, replication, prediction)
+```
+
+```{r}
+train_ens_cor_preds_histo <- ggplot(data=train_ens_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on train")
+train_ens_cor_preds_histo
+```
+
+```{r}
+train_ens_zero_counts <- ggplot(data=train_ens_predictions[train_ens_predictions$prediction == 0, ]) + geom_histogram(mapping=aes(x=method), stat="count")
+train_ens_zero_counts
+```
+
+```{r}
+val_ens_predictions$train_type <- "vt"
+train_ens_predictions$train_type <- "tt"
+ens_predictions <- rbind(val_ens_predictions, train_ens_predictions)
+```
+
+```{r}
+ens_cor_preds_histo <- ggplot(data=ens_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_grid(rows=vars(method), cols=vars(train_type)) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class")
+ens_cor_preds_histo
+```
+Bayes covariant coupling method produces more uniformly distributed predictions than methods m1 and m2. Also, there is a big difference in each method between ensemble trained on validation and ensemble trained on train set. Ensembles trained on validation set produce generally more uniformly distributed predictions. However, ensembles trained on training set attain statistically significantly higher accuracy.

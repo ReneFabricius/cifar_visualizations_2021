@@ -1,3 +1,0 @@
-"0","box2_nll <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y=nll, fill=method)) +"
-"0","  theme(axis.ticks.x=element_blank(), axis.text.x = element_blank())"
-"0","box2_nll"

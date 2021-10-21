@@ -1,0 +1,164 @@
+---
+title: "Outputs inspection half CIFAR10"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library("ggpubr")
+library(LDATS)
+library(stringr)
+
+source("utils.R")
+```
+
+Visualization on CIFAR10.
+We are using data of three neural networks trained on reduced CIFAR10 training set. Half of the CIFAR10 training set was extracted as a validation set. We then divided both the reduced training set and validation set into 50 disjoint subsets and trained an ensemble on each of them.
+In this visualization, we are trying to inspect the outputs deeper, mainly to make sense of strange behavior of nll metric for ensemble outputs.
+
+```{r}
+base_dir <- "../data/data_train_val_half_c10"
+repls <- 0:0
+folds <- 0:49
+
+nets_outputs <- load_network_outputs(base_dir, repls)
+ens_outputs <- load_ensemble_outputs(base_dir, repls, folds)
+net_results <- read.csv(file.path(base_dir, "net_accuracies.csv"))
+ens_results <- read.csv(file.path(base_dir, "ensemble_accuracies.csv"))
+```
+
+```{r}
+classes <- dim(nets_outputs[["test_outputs"]])[4]
+nets_num <- length(nets_outputs[["networks"]])
+preds <- nets_outputs[["test_outputs"]]
+labs <- nets_outputs[["test_labels"]]
+network <- c()
+prediction <- c()
+replication <- c()
+for (ri in repls + 1)
+{
+  for (net_i in seq_along(nets_outputs[["networks"]]))
+  {
+    net_outputs_prob <- softmax(preds[ri, net_i, , ])
+    cur_pred <- c()
+    for (class in 1:classes)
+    {
+      class_probs <- net_outputs_prob[labs[ri, ] == (class - 1), class]
+      cur_pred <- c(cur_pred, class_probs)
+    }
+    network <- c(network, rep(nets_outputs[["networks"]][net_i], length(cur_pred)))
+    prediction <- c(prediction, cur_pred)
+  }
+  replication <- c(replication, rep(ri, length(prediction) - length(replication)))
+}
+
+networks_predictions <- data.frame(network, replication, prediction)
+
+```
+
+```{r}
+nets_cor_preds_histo <- ggplot(data=networks_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~network) + scale_y_log10()
+nets_cor_preds_histo
+```
+
+```{r}
+classes <- dim(nets_outputs[["test_outputs"]])[4]
+labs <- nets_outputs[["test_labels"]]
+method <- c()
+prediction <- c()
+replication <- c()
+fold <- c()
+for (ri in repls + 1)
+{
+  for (m_i in seq_along(ens_outputs$methods))
+  {
+    for (f_i in folds + 1)
+    {
+      cur_pred <- c()
+      for (class in 1:classes)
+      {
+        class_probs <- ens_outputs$val_training[ri, m_i, f_i, labs[ri, ] == (class - 1), class]
+        cur_pred <- c(cur_pred, class_probs)
+      }
+      method <- c(method, rep(ens_outputs$methods[m_i], length(cur_pred)))
+      prediction <- c(prediction, cur_pred)
+      fold <- c(fold, rep(f_i - 1, length(cur_pred)))
+    }
+  }
+  replication <- c(replication, rep(ri - 1, length(cur_pred) - length(replication)))
+}
+
+val_ens_predictions <- data.frame(method, replication, fold, prediction)
+```
+
+```{r}
+val_ens_cor_preds_histo <- ggplot(data=val_ens_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on val")
+val_ens_cor_preds_histo
+```
+
+```{r}
+val_ens_zero_counts <- ggplot(data=val_ens_predictions[val_ens_predictions$prediction == 0, ]) + geom_histogram(mapping=aes(x=method), stat="count")
+val_ens_zero_counts
+```
+
+```{r}
+val_ens_nll <- ggplot(data=ens_results) + geom_boxplot(mapping=aes(x=method, y=nll)) + facet_wrap(~train_set)
+val_ens_nll
+```
+
+```{r}
+classes <- dim(nets_outputs[["test_outputs"]])[4]
+labs <- nets_outputs[["test_labels"]]
+method <- c()
+prediction <- c()
+replication <- c()
+fold <- c()
+for (ri in repls + 1)
+{
+  for (m_i in seq_along(ens_outputs$methods))
+  {
+    for (f_i in folds + 1)
+    {
+      cur_pred <- c()
+      for (class in 1:classes)
+      {
+        class_probs <- ens_outputs$train_training[ri, m_i, f_i, labs[ri, ] == (class - 1), class]
+        cur_pred <- c(cur_pred, class_probs)
+      }
+      method <- c(method, rep(ens_outputs$methods[m_i], length(cur_pred)))
+      prediction <- c(prediction, cur_pred)
+      fold <- c(fold, rep(f_i - 1, length(cur_pred)))
+    }
+  }
+  replication <- c(replication, rep(ri - 1, length(cur_pred) - length(replication)))
+}
+
+train_ens_predictions <- data.frame(method, replication, fold, prediction)
+```
+
+```{r}
+train_ens_cor_preds_histo <- ggplot(data=train_ens_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on train")
+train_ens_cor_preds_histo
+```
+
+```{r}
+train_ens_zero_counts <- ggplot(data=train_ens_predictions[train_ens_predictions$prediction == 0, ]) + geom_histogram(mapping=aes(x=method), stat="count")
+train_ens_zero_counts
+```
+
+```{r}
+val_ens_predictions$train_type <- "vt"
+train_ens_predictions$train_type <- "tt"
+ens_predictions <- rbind(val_ens_predictions, train_ens_predictions)
+```
+
+```{r}
+ens_cor_preds_histo <- ggplot(data=ens_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_grid(rows=vars(method), cols=vars(train_type)) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class")
+ens_cor_preds_histo
+```
+Here we observe similar results to those in vasualizations_ensemble_outputs_CIF10.
+

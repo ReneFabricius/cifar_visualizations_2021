@@ -1,6 +1,9 @@
 ---
 title: "LDA training on random subsets of different sizes"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
+bibliography: references.bib
 ---
 
 ```{r}
@@ -8,12 +11,13 @@ library(ggplot2)
 library(dplyr)
 ```
 
+Experiment code is in the file training_subsets_sizes_experiment.py.
 Experiment on CIFAR10 dataset.
-This experiment trained WeightedLDAEnsemble on various subsets of different sizes of data on which nn were trained. Subsets of the same size are disjoint. Three different coupling methods were used: method one and two from Wu, Lin and Weng and Bayes Covariant method.
+This experiment trains WeightedLDAEnsemble on various subsets of different sizes of data on which neural networks were trained. Subsets of the same size are disjoint. Three different coupling methods are used: method one and two from [@wu2004probability] and Bayes covariant method [@vsuch2016bayes]. Goal of this experiment is to determine, for which size of the LDA training set, the ensemble achieves the best performance.
 
 ```{r}
-acc_ens_subsets <- read.csv("../train_data/1/exp_subsets_sizes_train_outputs/accuracies.csv", stringsAsFactors=TRUE)
-acc_nets <- read.csv("../train_data/1/exp_subsets_sizes_train_outputs/net_accuracies.csv", stringsAsFactors=TRUE)
+acc_ens_subsets <- read.csv("../data/data_train_val_c10/1/exp_subsets_sizes_train_outputs/accuracies.csv", stringsAsFactors=TRUE)
+acc_nets <- read.csv("../data/data_train_val_c10/1/exp_subsets_sizes_train_outputs/net_accuracies.csv", stringsAsFactors=TRUE)
 ```
 
 ```{r}
@@ -24,13 +28,15 @@ scatter
 scatter2 <- ggplot() + geom_point(data=acc_ens_subsets, mapping=aes(x=train_size, y=accuracy, color=method), alpha=0.7)
 scatter2
 ```
-
+Scatter plots are quite messy, so we will use boxplots.
 
 ```{r}
 
 box_acc <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size)
 box_acc
 ```
+Accuracy seems to be slowly increasing with increasing training set size. We will inspect this closer by plotting for smaller subset sizes range.
+
 
 ```{r}
 acc_ens_subsets %>% filter(0 < train_size & train_size < 200) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size, nrow = 1)
@@ -42,20 +48,22 @@ acc_ens_subsets %>% filter(100 < train_size & train_size < 500) %>% ggplot() + g
 ```{r}
 acc_ens_subsets %>% filter(200 < train_size & train_size < 1000) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size, nrow = 1)
 ```
+Here the accuracy increase seems to be stopping at train set size 430.
+
 ```{r}
 acc_ens_subsets %>% filter(500 < train_size & train_size < 3000) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size, nrow = 1)
 ```
-
+Here is visible some further increase, but it is not very stable and decreases again.
 ```{r}
 acc_ens_subsets %>% filter(1000 < train_size & train_size < 5000) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size, nrow = 1)
 ```
+It seems, that from train set size around 1000 accuracy decreases again.
 
 ```{r}
-
 box_nll <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y = nll, color=method)) + facet_wrap(~train_size)
 box_nll
 ```
-Nll doesn't seem to be doing much with changing LDA train size.
+Nll doesn't seem to be doing much with changing LDA train size. Still, this metric needs further attention because of the zero probabilities produced by ensemble.
 
 ```{r}
 acc_ens_subsets %>% filter(200 < train_size & train_size < 1000) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = nll, color=method)) + facet_wrap(~train_size, nrow = 1)

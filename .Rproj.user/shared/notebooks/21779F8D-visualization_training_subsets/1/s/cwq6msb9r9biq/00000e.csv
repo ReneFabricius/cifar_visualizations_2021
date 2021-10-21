@@ -1,6 +1,0 @@
-"0","box_nll <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y=nll, fill=method)) +"
-"0","  geom_hline(data=acc_nets, mapping=aes(yintercept=nll, color=network), size=1) +"
-"0","  scale_fill_brewer(type=""qual"") +"
-"0","  scale_color_brewer(type=""qual"") +"
-"0","  theme(axis.ticks.x=element_blank(), axis.text.x = element_blank())"
-"0","box_nll"

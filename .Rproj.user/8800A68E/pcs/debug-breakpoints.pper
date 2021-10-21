@@ -1,5 +1,21 @@
 {
     "debugBreakpointsState": {
-        "breakpoints": []
+        "breakpoints": [
+            {
+                "id": 11,
+                "path": "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/visualizations/utils.R",
+                "line_number": 89,
+                "function_steps": "11,4,4,4,4,4,2",
+                "function_name": "load_ensemble_outputs",
+                "state": 1,
+                "editor_state": 1,
+                "editor_line_number": 89,
+                "is_pending_debug_completion": false,
+                "needs_updated_steps": true,
+                "type": 0,
+                "is_package_breakpoint": false,
+                "package_name": ""
+            }
+        ]
     }
 }

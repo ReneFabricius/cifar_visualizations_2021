@@ -1,2 +1,0 @@
-"0","box_acc <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=accuracy)) + facet_wrap(~method)"
-"0","box_acc"

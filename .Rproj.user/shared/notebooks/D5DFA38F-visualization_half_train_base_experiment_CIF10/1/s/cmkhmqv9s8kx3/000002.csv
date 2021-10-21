@@ -1,2 +1,0 @@
-"0","box_net_acc <- ggplot() + geom_boxplot(data=net_results, mapping=aes(x=network, y=accuracy))"
-"0","box_net_acc"
