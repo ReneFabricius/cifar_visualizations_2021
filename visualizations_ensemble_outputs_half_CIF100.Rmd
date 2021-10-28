@@ -24,6 +24,7 @@ In this visualization, we are trying to inspect the outputs deeper, mainly to ma
 base_dir <- "../data/data_train_val_half_c100"
 repls <- 0:9
 folds <- 0:4
+classes <- 100
 
 nets_outputs <- load_network_outputs(base_dir, repls)
 ens_outputs <- load_ensemble_outputs(base_dir, repls, folds)
@@ -31,77 +32,46 @@ net_results <- read.csv(file.path(base_dir, "net_accuracies.csv"))
 ens_results <- read.csv(file.path(base_dir, "ensemble_accuracies.csv"))
 ```
 
+
 ```{r}
-classes <- dim(nets_outputs[["test_outputs"]])[4]
-nets_num <- length(nets_outputs[["networks"]])
-preds <- nets_outputs[["test_outputs"]]
-labs <- nets_outputs[["test_labels"]]
-network <- c()
-prediction <- c()
-replication <- c()
+preds <- nets_outputs$test_outputs
 for (ri in repls + 1)
 {
   for (net_i in seq_along(nets_outputs[["networks"]]))
   {
-    net_outputs_prob <- softmax(preds[ri, net_i, , ])
-    cur_pred <- c()
-    for (class in 1:classes)
-    {
-      class_probs <- net_outputs_prob[labs[ri, ] == (class - 1), class]
-      cur_pred <- c(cur_pred, class_probs)
-    }
-    network <- c(network, rep(nets_outputs[["networks"]][net_i], length(cur_pred)))
-    prediction <- c(prediction, cur_pred)
+    preds[ri, net_i, ,] <- softmax(preds[ri, net_i, , ])
   }
-  replication <- c(replication, rep(ri, length(prediction) - length(replication)))
 }
-
-networks_predictions <- data.frame(network, replication, prediction)
-
+nets_test_cor_probs <- gather(preds, 1 + nets_outputs$test_labels[1, ], 3, 4)
+nets_test_cor_probs <- melt(nets_test_cor_probs)
+nets_test_cor_probs <- nets_test_cor_probs[, c(-3, -4)]
+names(nets_test_cor_probs) <- c("replication", "network", "prediction")
+nets_test_cor_probs$network <- as.factor(nets_test_cor_probs$network)
+levels(nets_test_cor_probs$network) <- nets_outputs$networks
 ```
 
 ```{r}
-nets_cor_preds_histo <- ggplot(data=networks_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~network) + scale_y_log10()
+nets_cor_preds_histo <- ggplot(data=nets_test_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~network) + scale_y_log10()
 nets_cor_preds_histo
 ```
 
-```{r}
-classes <- dim(nets_outputs[["test_outputs"]])[4]
-labs <- nets_outputs[["test_labels"]]
-method <- c()
-prediction <- c()
-replication <- c()
-fold <- c()
-for (ri in repls + 1)
-{
-  for (m_i in seq_along(ens_outputs$methods))
-  {
-    for (f_i in folds + 1)
-    {
-      cur_pred <- c()
-      for (class in 1:classes)
-      {
-        class_probs <- ens_outputs$val_training[ri, m_i, f_i, labs[ri, ] == (class - 1), class]
-        cur_pred <- c(cur_pred, class_probs)
-      }
-      method <- c(method, rep(ens_outputs$methods[m_i], length(cur_pred)))
-      prediction <- c(prediction, cur_pred)
-      fold <- c(fold, rep(f_i - 1, length(cur_pred)))
-    }
-  }
-  replication <- c(replication, rep(ri - 1, length(cur_pred) - length(replication)))
-}
 
-val_ens_predictions <- data.frame(method, replication, fold, prediction)
+```{r}
+val_ens_cor_probs <- gather(ens_outputs$val_training, 1 + nets_outputs$test_labels[1, ], 4, 5)
+val_ens_cor_probs <- melt(val_ens_cor_probs)
+val_ens_cor_probs <- val_ens_cor_probs[, c(-4, -5)]
+names(val_ens_cor_probs) <- c("replication", "method", "fold", "prediction")
+val_ens_cor_probs$method <- as.factor(val_ens_cor_probs$method)
+levels(val_ens_cor_probs$method) <- ens_outputs$methods
 ```
 
 ```{r}
-val_ens_cor_preds_histo <- ggplot(data=val_ens_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on val")
+val_ens_cor_preds_histo <- ggplot(data=val_ens_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on val")
 val_ens_cor_preds_histo
 ```
 
 ```{r}
-val_ens_zero_counts <- ggplot(data=val_ens_predictions[val_ens_predictions$prediction == 0, ]) + geom_histogram(mapping=aes(x=method), stat="count")
+val_ens_zero_counts <- ggplot(data=val_ens_cor_probs[val_ens_cor_probs$prediction <= 0, ]) + geom_histogram(mapping=aes(x=method), stat="count")
 val_ens_zero_counts
 ```
 
@@ -110,55 +80,66 @@ val_ens_nll <- ggplot(data=ens_results) + geom_boxplot(mapping=aes(x=method, y=n
 val_ens_nll
 ```
 
-```{r}
-classes <- dim(nets_outputs[["test_outputs"]])[4]
-labs <- nets_outputs[["test_labels"]]
-method <- c()
-prediction <- c()
-replication <- c()
-fold <- c()
-for (ri in repls + 1)
-{
-  for (m_i in seq_along(ens_outputs$methods))
-  {
-    for (f_i in folds + 1)
-    {
-      cur_pred <- c()
-      for (class in 1:classes)
-      {
-        class_probs <- ens_outputs$train_training[ri, m_i, f_i, labs[ri, ] == (class - 1), class]
-        cur_pred <- c(cur_pred, class_probs)
-      }
-      method <- c(method, rep(ens_outputs$methods[m_i], length(cur_pred)))
-      prediction <- c(prediction, cur_pred)
-      fold <- c(fold, rep(f_i - 1, length(cur_pred)))
-    }
-  }
-  replication <- c(replication, rep(ri - 1, length(cur_pred) - length(replication)))
-}
 
-train_ens_predictions <- data.frame(method, replication, fold, prediction)
+```{r}
+train_ens_cor_probs <- gather(ens_outputs$train_training, 1 + nets_outputs$test_labels[1, ], 4, 5)
+train_ens_cor_probs <- melt(train_ens_cor_probs)
+train_ens_cor_probs <- train_ens_cor_probs[, c(-4, -5)]
+names(train_ens_cor_probs) <- c("replication", "method", "fold", "prediction")
+train_ens_cor_probs$method <- as.factor(train_ens_cor_probs$method)
+levels(train_ens_cor_probs$method) <- ens_outputs$methods
 ```
 
+
 ```{r}
-train_ens_cor_preds_histo <- ggplot(data=train_ens_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on train")
+train_ens_cor_preds_histo <- ggplot(data=train_ens_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on train")
 train_ens_cor_preds_histo
 ```
 
+
 ```{r}
-train_ens_zero_counts <- ggplot(data=train_ens_predictions[train_ens_predictions$prediction == 0, ]) + geom_histogram(mapping=aes(x=method), stat="count")
+train_ens_zero_counts <- ggplot(data=train_ens_cor_probs[train_ens_cor_probs$prediction <= 0, ]) + geom_histogram(mapping=aes(x=method), stat="count")
 train_ens_zero_counts
 ```
 
 ```{r}
-val_ens_predictions$train_type <- "vt"
-train_ens_predictions$train_type <- "tt"
-ens_predictions <- rbind(val_ens_predictions, train_ens_predictions)
+val_ens_cor_probs$train_type <- "vt"
+train_ens_cor_probs$train_type <- "tt"
+ens_cor_probs <- rbind(val_ens_cor_probs, train_ens_cor_probs)
 ```
 
 ```{r}
-ens_cor_preds_histo <- ggplot(data=ens_predictions) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_grid(rows=vars(method), cols=vars(train_type)) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class")
+ens_cor_preds_histo <- ggplot(data=ens_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_grid(rows=vars(method), cols=vars(train_type)) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class")
 ens_cor_preds_histo
 ```
 Very strange behavior for the bc method trained on training set. Needs further attention.
 
+```{r}
+val_aggr_Rs <- np$load(file.path(base_dir, "val_training_class_aggr_R.npy"))
+train_aggr_Rs <- np$load(file.path(base_dir, "train_training_class_aggr_R.npy"))
+df_val_aggr_Rs <- melt(val_aggr_Rs)
+names(df_val_aggr_Rs) <- c("precision", "class", "class1", "class2", "prob")
+df_train_aggr_Rs <- melt(train_aggr_Rs)
+names(df_train_aggr_Rs) <- c("precision", "class", "class1", "class2", "prob")
+df_val_aggr_Rs$train_type <- "val_training"
+df_train_aggr_Rs$train_type <- "train_training"
+df_aggr_Rs <- rbind(df_val_aggr_Rs, df_train_aggr_Rs)
+df_aggr_Rs[, c("class", "class1", "class2")] <- lapply(df_aggr_Rs[, c("class", "class1", "class2")], as.factor)
+```
+
+```{r}
+for (cls in 1:classes)
+{
+  cur_class_Rs <- df_aggr_Rs %>% filter(class == cls)
+  plot_cls <-  ggplot(cur_class_Rs, aes(x = class2, y = class1)) + 
+    geom_raster(aes(fill=prob)) + 
+    facet_wrap(~train_type) +
+    scale_fill_gradient(low="grey90", high="red") +
+    scale_y_discrete(limits=rev, breaks=seq(0, classes, 10)) +
+    scale_x_discrete(breaks=seq(0, classes, 10)) +
+    labs(x="class 1", y="class 2", title=paste("Pairwise probabilities - class ", cls)) +
+    theme_bw()
+  
+  print(plot_cls)
+}
+```
