@@ -20,7 +20,7 @@ source("utils.R")
 ```
 Visualization on CIFAR10.
 We are using data of three neural networks trained on reduced CIFAR10 training set. These networks were trained in 30 replications.
-In each replication, 500 samples from the training set were randomly extracted and formed validation set. In each replication, we trained on the outputs of neural networks two ensembles. First was trained on randomly chosen subset, of size 500, of nn training set, second on the extracted validation set.
+In each replication, 500 samples from the training set were randomly extracted and formed validation set. In each replication, we trained two ensembles on the outputs of neural networks. First one was trained on randomly chosen subset, of size 500, of nn training set, second on the extracted validation set.
 In this visualization, we are trying to inspect the outputs deeper, mainly to make sense of strange behavior of nll metric for ensemble outputs.
 
 
@@ -170,12 +170,67 @@ for (cls in 1:classes)
     facet_wrap(~train_type) +
     scale_fill_gradient(low="grey90", high="red") +
     scale_y_discrete(limits=rev) +
-    labs(x="class 1", y="class 2", title=paste("Pairwise probabilities - class ", cls)) +
+    labs(x="class 2", y="class 1", title=paste("Pairwise probabilities - class ", cls)) +
     theme_bw()
   
   print(plot_cls)
 }
 ```
 
+```{r}
+lda_coefs <- load_lda_coefs(base_dir, repls)
+```
 
+```{r}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    cur_plt <- lda_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_wrap(~train_type) + ggtitle(paste("Coefficients for class", cl1, "vs", cl2))
+    print(cur_plt)
+  }
+}
+```
 
+```{r}
+avg_lda_coefs <- lda_coefs %>% filter(coefficient != "interc") %>% group_by(class1, class2, precision, train_type, coefficient) %>% summarise( value = mean(value)) %>% ungroup()
+avg_lda_coefs_vt <- avg_lda_coefs %>% filter(train_type=="val_training")
+avg_lda_coefs_tt <- avg_lda_coefs %>% filter(train_type=="train_training")
+avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value - min(avg_lda_coefs_vt$value)
+avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value / max(avg_lda_coefs_vt$value)
+avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value - min(avg_lda_coefs_tt$value)
+avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value / max(avg_lda_coefs_tt$value)
+avg_lda_coefs <- rbind(avg_lda_coefs_vt, avg_lda_coefs_tt)
+avg_lda_c_w <- pivot_wider(avg_lda_coefs, names_from = coefficient, values_from = value)
+avg_lda_c_w[, c("class1", "class2")] <- lapply(avg_lda_c_w[, c("class1", "class2")], as.factor)
+avg_lda_c_w$top_net <- factor(c("densenet121", "resnet34", "xception")[max.col(as.matrix(avg_lda_c_w[, c("densenet121", "resnet34", "xception")]))])
+```
+
+```{r}
+raster_plot <- ggplot(avg_lda_c_w) + 
+  geom_tile(aes(x=class2, y=class1, fill=rgb(densenet121, resnet34, xception))) +
+  scale_y_discrete(limits=rev, breaks=seq(0,classes, 10)) + scale_x_discrete(breaks=seq(0,classes, 10)) + scale_fill_identity() + facet_wrap(~train_type)
+raster_plot
+```
+
+```{r}
+coefs_grid <- ggplot(avg_lda_c_w, aes(x=class2, y=class1, fill=top_net)) + 
+  geom_raster() + 
+  scale_fill_brewer(type="qual") +
+  facet_wrap(~train_type) +
+  scale_y_discrete(limits=rev) +
+  geom_vline(xintercept=seq(-0.5, 9.5, 1.0)) + 
+  geom_hline(yintercept=seq(-0.5, 9.5, 1.0)) +
+  guides(fill=guide_legend(title="Network")) +
+  xlab("Class") + 
+  ylab("Class") +
+  ggtitle("Network with highest lda weight for class pairs") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+coefs_grid
+```
+Densenet is clearly dominant for both LDA training methodologies.

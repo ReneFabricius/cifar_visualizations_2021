@@ -17,7 +17,7 @@ source("utils.R")
 ```
 
 Visualization on CIFAR100.
-We are using data of three neural networks trained on reduced CIFAR100 training set. Half of the CIFAR100 training set was extracted as a validation set. We then divided both the reduced training set and validation set into 5 disjoint subsets and trained an ensemble on each of them. This was done in 10 replications, each time with ransom split of the training set into validation and new training set.
+We are using data of three neural networks trained on reduced CIFAR100 training set. Half of the CIFAR100 training set was extracted as a validation set. We then divided both the reduced training set and validation set into 5 disjoint subsets and trained an ensemble on each of them. This was done in 10 replications, each time with random split of the training set into validation and new training set.
 In this visualization, we are trying to inspect the outputs deeper, mainly to make sense of strange behavior of nll metric for ensemble outputs.
 
 ```{r}
@@ -125,6 +125,8 @@ df_val_aggr_Rs$train_type <- "val_training"
 df_train_aggr_Rs$train_type <- "train_training"
 df_aggr_Rs <- rbind(df_val_aggr_Rs, df_train_aggr_Rs)
 df_aggr_Rs[, c("class", "class1", "class2")] <- lapply(df_aggr_Rs[, c("class", "class1", "class2")], as.factor)
+
+df_aggr_Rs_diff <- df_aggr_Rs %>% pivot_wider(names_from = train_type, values_from = prob) %>% mutate(val_min_train = val_training - train_training)
 ```
 
 ```{r}
@@ -137,9 +139,109 @@ for (cls in 1:classes)
     scale_fill_gradient(low="grey90", high="red") +
     scale_y_discrete(limits=rev, breaks=seq(0, classes, 10)) +
     scale_x_discrete(breaks=seq(0, classes, 10)) +
-    labs(x="class 1", y="class 2", title=paste("Pairwise probabilities - class ", cls)) +
+    labs(x="class 2", y="class 1", title=paste("Pairwise probabilities - class ", cls)) +
     theme_bw()
   
   print(plot_cls)
 }
 ```
+
+Difference between these two LDA training methodologies are not well visible, so we will plot just the differences.
+
+```{r}
+for (cls in 1:classes)
+{
+  cur_class_Rs <- df_aggr_Rs_diff %>% filter(class == cls)
+  plot_cls <-  ggplot(cur_class_Rs, aes(x = class2, y = class1)) + 
+    geom_raster(aes(fill=val_min_train)) + 
+    scale_fill_gradient2(low="blue", high="red", mid="white", midpoint=0) +
+    scale_y_discrete(limits=rev, breaks=seq(0, classes, 10)) +
+    scale_x_discrete(breaks=seq(0, classes, 10)) +
+    labs(x="class 2", y="class 1", title=paste("Pairwise probabilities differences - class ", cls)) +
+    theme_bw()
+  
+  print(plot_cls)
+}
+```
+
+
+
+```{r}
+lda_coefs <- load_lda_coefs(base_dir, repls, folds)
+```
+```{r}
+for (cl1 in 1:19)
+{
+  for (cl2 in (cl1 + 1):20)
+  {
+    cur_plt <- lda_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_wrap(~train_type) + ggtitle(paste("Coefficients for class", cl1, "vs", cl2))
+    print(cur_plt)
+  }
+}
+```
+Coefficients of LDA trained on validation set have lower variance and more similar values across the networks.
+
+
+```{r}
+avg_lda_coefs <- lda_coefs %>% filter(coefficient != "interc") %>% group_by(class1, class2, precision, train_type, coefficient) %>% summarise( value = mean(value)) %>% ungroup()
+avg_lda_coefs_vt <- avg_lda_coefs %>% filter(train_type=="val_training")
+avg_lda_coefs_tt <- avg_lda_coefs %>% filter(train_type=="train_training")
+avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value - min(avg_lda_coefs_vt$value)
+avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value / max(avg_lda_coefs_vt$value)
+avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value - min(avg_lda_coefs_tt$value)
+avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value / max(avg_lda_coefs_tt$value)
+avg_lda_coefs <- rbind(avg_lda_coefs_vt, avg_lda_coefs_tt)
+avg_lda_c_w <- pivot_wider(avg_lda_coefs, names_from = coefficient, values_from = value)
+avg_lda_c_w[, c("class1", "class2")] <- lapply(avg_lda_c_w[, c("class1", "class2")], as.factor)
+```
+
+```{r}
+raster_plot <- ggplot(avg_lda_c_w) + 
+  geom_tile(aes(x=class2, y=class1, fill=rgb(densenet121, resnet34, xception))) +
+  scale_y_discrete(limits=rev, breaks=seq(0,classes, 10)) + scale_x_discrete(breaks=seq(0,classes, 10)) + scale_fill_identity() + facet_wrap(~train_type)
+raster_plot
+```
+For validation set trained LDAs, red - densenet seems to be dominant. On the other hand for train set trained LDAs blue - xception has higher values.
+
+```{r}
+avg_lda_coefs <- lda_coefs %>% filter(coefficient != "interc") %>% group_by(class1, class2, precision, train_type, coefficient) %>% summarise( value = mean(value)) %>% ungroup()
+avg_lda_coefs_vt <- avg_lda_coefs %>% filter(train_type=="val_training")
+avg_lda_coefs_tt <- avg_lda_coefs %>% filter(train_type=="train_training")
+avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value - min(avg_lda_coefs_vt$value)
+avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value / max(avg_lda_coefs_vt$value)
+avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value - min(avg_lda_coefs_tt$value)
+avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value / max(avg_lda_coefs_tt$value)
+avg_lda_coefs <- rbind(avg_lda_coefs_vt, avg_lda_coefs_tt)
+avg_lda_c_w <- pivot_wider(avg_lda_coefs, names_from = coefficient, values_from = value)
+avg_lda_c_w[, c("class1", "class2")] <- lapply(avg_lda_c_w[, c("class1", "class2")], as.factor)
+avg_lda_c_w$top_net <- factor(c("densenet121", "resnet34", "xception")[max.col(as.matrix(avg_lda_c_w[, c("densenet121", "resnet34", "xception")]))])
+```
+
+```{r}
+raster_plot <- ggplot(avg_lda_c_w) + 
+  geom_tile(aes(x=class2, y=class1, fill=rgb(densenet121, resnet34, xception))) +
+  scale_y_discrete(limits=rev, breaks=seq(0,classes, 10)) + scale_x_discrete(breaks=seq(0,classes, 10)) + scale_fill_identity() + facet_wrap(~train_type)
+raster_plot
+```
+
+```{r}
+coefs_grid <- ggplot(avg_lda_c_w, aes(x=class2, y=class1, fill=top_net)) + 
+  geom_raster() + 
+  scale_fill_brewer(type="qual") +
+  facet_wrap(~train_type) +
+  scale_y_discrete(breaks=seq(0, classes, 10), limits=rev) +
+  scale_x_discrete(breaks=seq(0, classes, 10)) +
+  guides(fill=guide_legend(title="Network")) +
+  xlab("Class") + 
+  ylab("Class") +
+  ggtitle("Network with highest lda weight for class pairs") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+coefs_grid
+```
+
+LDAs trained on nn train set seems to be dominated by xception. LDAs trained on validation set by densenet.

@@ -265,6 +265,81 @@ load_class_averaged_R_matrices <- function(outputs_path, labels, replications, f
   return(class_aggreg_Rs)
 }
 
+load_lda_coefs <- function(outputs_path, replications, folds=NULL)
+{
+  train_types <- c("train_training", "val_training")
+  outputs_folder <- "comb_outputs"
+  net_ord = "networks_order.txt"
+  outputs_match <- "lda_coefs_"
+  if (is.null(folds))
+  {
+    pattern <- paste("^", outputs_match, "(.*).csv$", sep="")
+  }
+  else
+  {
+    pattern <- paste("^fold_\\d+_", outputs_match, "(.*).csv$", sep="")
+  }
+  files <- list.files(
+    file.path(outputs_path, replications[1], outputs_folder, train_types[1]), 
+    recursive=FALSE, full.names=FALSE)
+  precisions <- str_match(files, pattern)[, 2]
+  precisions <- precisions[!is.na(precisions)]
+  precisions <- unique(precisions)
+  
+  output <- data.frame()
+  for (t_type in train_types)
+  {
+    type_df <- data.frame()
+    for (repli in replications)
+    {
+      repli_df <- data.frame()
+      for (prec in precisions)
+      {
+        prec_df <- data.frame()
+        if (is.null(folds))
+        {
+          file_name <- paste(outputs_match, prec, ".csv", sep = "")
+          file_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
+          prec_df <- read.csv(file_path)
+        }
+        else
+        {
+          for (foldi in folds)
+          {
+            file_name <- paste("fold_", foldi, "_", outputs_match, prec, ".csv", sep="")
+            file_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
+            fold_df <- read.csv(file_path)
+            fold_df$fold <- foldi
+            prec_df <- rbind(prec_df, fold_df)
+          }
+        }
+        prec_df$precision <- prec
+        repli_df <- rbind(repli_df, prec_df)
+      }
+      repli_df$replication <- repli
+      type_df <- rbind(type_df, repli_df)
+    }
+    type_df$train_type <- t_type
+    output <- rbind(output, type_df)
+  }
+  colnames(output)[which(names(output) == "i")] <- "class1"
+  colnames(output)[which(names(output) == "j")] <- "class2"
+  output$class1 <- output$class1 + 1
+  output$class2 <- output$class2 + 1
+  
+  nets <- read.csv(file.path(outputs_path, replications[1], outputs_folder, net_ord), header=FALSE)
+  for (ni in seq_along(nets[, 1]))
+  {
+    colnames(output)[which(names(output) == paste("coef", (ni - 1), sep=""))] <- nets[ni, 1]
+  }
+  
+  output <- pivot_longer(output, cols=c(nets[, 1], "interc"), names_to="coefficient", values_to="value")
+  output$coefficient <- factor(output$coefficient, levels=c(nets[, 1], "interc"))
+  
+  
+  return(output)
+}
+
 #' Gathers elements from array data according to vector index.
 #' Vector index spans along one dimension and picks data along another.
 #' Dimension along which index spans is given by index_dim,
