@@ -118,6 +118,8 @@ Here we observe similar results to those in vasualizations_ensemble_outputs_CIF1
 
 ```{r}
 aggreg_Rs <- load_class_averaged_R_matrices(base_dir,  nets_outputs$test_labels[1, ], repls, folds=folds)
+
+df_aggr_Rs_diff <- aggreg_Rs %>% pivot_wider(names_from = train_type, values_from = prob) %>% mutate(val_min_train = val_training - train_training)
 ```
 
 ```{r}
@@ -130,6 +132,22 @@ for (cls in 1:classes)
     scale_fill_gradient(low="grey90", high="red") +
     scale_y_discrete(limits=rev) +
     labs(x="class 2", y="class 1", title=paste("Pairwise probabilities - class ", cls)) +
+    theme_bw()
+  
+  print(plot_cls)
+}
+```
+
+```{r}
+for (cls in 1:classes)
+{
+  cur_class_Rs <- df_aggr_Rs_diff %>% filter(class == cls)
+  plot_cls <-  ggplot(cur_class_Rs, aes(x = class2, y = class1)) + 
+    geom_raster(aes(fill=val_min_train)) + 
+    scale_fill_gradient2(low="blue", high="red", mid="white", midpoint=0) +
+    scale_y_discrete(limits=rev, breaks=seq(0, classes, 10)) +
+    scale_x_discrete(breaks=seq(0, classes, 10)) +
+    labs(x="class 2", y="class 1", title=paste("Pairwise probabilities differences - class ", cls)) +
     theme_bw()
   
   print(plot_cls)
@@ -169,7 +187,7 @@ avg_lda_c_w$top_net <- factor(c("densenet121", "resnet34", "xception")[max.col(a
 ```{r}
 raster_plot <- ggplot(avg_lda_c_w) + 
   geom_tile(aes(x=class2, y=class1, fill=rgb(densenet121, resnet34, xception))) +
-  scale_y_discrete(limits=rev, breaks=seq(0,classes, 10)) + scale_x_discrete(breaks=seq(0,classes, 10)) + scale_fill_identity() + facet_wrap(~train_type)
+  scale_y_discrete(limits=rev, breaks=seq(0,classes, 10)) + scale_x_discrete(breaks=seq(0,classes, 10)) + scale_fill_identity() + facet_wrap(~train_type) + ggtitle("RGB image formed from lda coefficients for networks densenet, resnet, xception")
 raster_plot
 ```
 

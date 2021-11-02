@@ -183,25 +183,6 @@ for (cl1 in 1:19)
 Coefficients of LDA trained on validation set have lower variance and more similar values across the networks.
 
 
-```{r}
-avg_lda_coefs <- lda_coefs %>% filter(coefficient != "interc") %>% group_by(class1, class2, precision, train_type, coefficient) %>% summarise( value = mean(value)) %>% ungroup()
-avg_lda_coefs_vt <- avg_lda_coefs %>% filter(train_type=="val_training")
-avg_lda_coefs_tt <- avg_lda_coefs %>% filter(train_type=="train_training")
-avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value - min(avg_lda_coefs_vt$value)
-avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value / max(avg_lda_coefs_vt$value)
-avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value - min(avg_lda_coefs_tt$value)
-avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value / max(avg_lda_coefs_tt$value)
-avg_lda_coefs <- rbind(avg_lda_coefs_vt, avg_lda_coefs_tt)
-avg_lda_c_w <- pivot_wider(avg_lda_coefs, names_from = coefficient, values_from = value)
-avg_lda_c_w[, c("class1", "class2")] <- lapply(avg_lda_c_w[, c("class1", "class2")], as.factor)
-```
-
-```{r}
-raster_plot <- ggplot(avg_lda_c_w) + 
-  geom_tile(aes(x=class2, y=class1, fill=rgb(densenet121, resnet34, xception))) +
-  scale_y_discrete(limits=rev, breaks=seq(0,classes, 10)) + scale_x_discrete(breaks=seq(0,classes, 10)) + scale_fill_identity() + facet_wrap(~train_type)
-raster_plot
-```
 For validation set trained LDAs, red - densenet seems to be dominant. On the other hand for train set trained LDAs blue - xception has higher values.
 
 ```{r}
@@ -221,9 +202,10 @@ avg_lda_c_w$top_net <- factor(c("densenet121", "resnet34", "xception")[max.col(a
 ```{r}
 raster_plot <- ggplot(avg_lda_c_w) + 
   geom_tile(aes(x=class2, y=class1, fill=rgb(densenet121, resnet34, xception))) +
-  scale_y_discrete(limits=rev, breaks=seq(0,classes, 10)) + scale_x_discrete(breaks=seq(0,classes, 10)) + scale_fill_identity() + facet_wrap(~train_type)
+  scale_y_discrete(limits=rev, breaks=seq(0,classes, 10)) + scale_x_discrete(breaks=seq(0,classes, 10)) + scale_fill_identity() + facet_wrap(~train_type) + ggtitle("RGB image formed from lda coefficients for networks densenet, resnet, xception")
 raster_plot
 ```
+For validation set trained LDAs, red - densenet seems to be dominant. On the other hand for train set trained LDAs blue - xception has higher values.
 
 ```{r}
 coefs_grid <- ggplot(avg_lda_c_w, aes(x=class2, y=class1, fill=top_net)) + 
