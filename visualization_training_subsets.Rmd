@@ -9,7 +9,6 @@ bibliography: references.bib
 ```{r}
 library(ggplot2)
 library(tidyr)
-
 ```
 
 Experiment code is in the file training_subsets_experiment.py.
@@ -21,18 +20,13 @@ acc_ens_subsets <- read.csv("../data/data_train_val_c10/1/exp_subsets_train_outp
 acc_nets <- read.csv("../data/data_train_val_c10/1/exp_subsets_train_outputs/net_accuracies.csv")
 ```
 
-```{r}
-histo <- ggplot() + geom_histogram(data=acc_ens_subsets, mapping=aes(x=accuracy, fill=method), position="identity", alpha=0.3, bins=40)
-histo
-```
-Histogram is quite messy, so we plot boxplots for better understanding the data.
-
 
 ```{r}
 box_acc <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y=accuracy, fill=method)) +
   geom_hline(data=acc_nets, mapping=aes(yintercept=accuracy, color=network), size=1) +
   scale_fill_brewer(type="qual") +
   scale_color_brewer(type="qual") +
+  ggtitle("Accuracy of coupling methods compared to accuracy of networks") + 
   theme(axis.ticks.x=element_blank(), axis.text.x = element_blank())
 box_acc
 ```
@@ -43,21 +37,24 @@ box_nll <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y
   geom_hline(data=acc_nets, mapping=aes(yintercept=nll, color=network), size=1) +
   scale_fill_brewer(type="qual") +
   scale_color_brewer(type="qual") +
+  ggtitle("NLL of coupling methods compared to accuracy of networks") +
   theme(axis.ticks.x=element_blank(), axis.text.x = element_blank())
 box_nll
 ```
-Ensembles have worse nll as the combined networks. This is due to ensemble producing zero probability for the correct label in several test samples. Needs further attention. 
+Ensembles have worse nll as the combined networks. This is due to ensemble producing close to zero or zero probability for the correct label in several test samples. Needs further attention. 
 
 ```{r}
 box2_acc <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y=accuracy, fill=method)) +
+  ggtitle("Accuracy of coupling methods") + 
   theme(axis.ticks.x=element_blank(), axis.text.x = element_blank())
 box2_acc
 ```
-All coupling methods perform similarly, regardless of the single or double precision.
+All coupling methods perform similarly, regardless of the single or double precision. A little difference is visible for bc method, where median accuracy for double precision is higher than for float precision.
 
 ```{r}
 box2_nll <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y=nll, fill=method)) +
+  ggtitle("NLL of coupling methods") +
   theme(axis.ticks.x=element_blank(), axis.text.x = element_blank())
 box2_nll
 ```
-Bayes covariant coupling method seems to be doing much better than the remaining coupling methods. This may be due to fewer zero probabilities for the correct label produced by this method.
+Bayes covariant coupling method seems to be doing much better than the remaining coupling methods. This may be due to fewer close to zero probabilities for the correct label produced by this method.

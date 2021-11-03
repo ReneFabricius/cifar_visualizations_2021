@@ -55,7 +55,6 @@ box_net_nll
 
 ```{r}
 ens_results_wide <- pivot_wider(ens_results, names_from = c(train_set, method), values_from = c(accuracy, nll))
-ens_results_wide
 ```
 Testing statistical significance of difference for training on validation and train data
 Since ensembles in each replication are trained on the same set of networks, we use paired t-test.
@@ -67,7 +66,6 @@ differences <- data.frame(ens_results_wide$accuracy_vt_m1 - ens_results_wide$acc
                           ens_results_wide$nll_vt_m1 - ens_results_wide$nll_tt_m1, ens_results_wide$nll_vt_m2 - ens_results_wide$nll_tt_m2,
                           ens_results_wide$nll_vt_m2_iter - ens_results_wide$nll_tt_m2_iter, ens_results_wide$nll_vt_bc - ens_results_wide$nll_tt_bc)
 names(differences) <- c("acc_diff_m1", "acc_diff_m2", "acc_diff_m2_iter", "acc_diff_bc", "nll_diff_m1", "nll_diff_m2", "nll_diff_m2_iter", "nll_diff_bc")
-differences
 ```
 
 Ascertaining normality of differences
@@ -113,8 +111,16 @@ t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, paired=
 t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter, paired=TRUE)
 ```
 ```{r}
+t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter, paired=TRUE, alternative="less")
+```
+
+```{r}
 t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc, paired=TRUE)
 ```
+```{r}
+t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc, paired=TRUE, alternative="less")
+```
+
 For all coupling methods, we found, that ensemble models trained on subset (of size 500) of the neural networks training set have statistically significantly better accuracy than ensemble models trained on separate validation set (of the same size).
 
 

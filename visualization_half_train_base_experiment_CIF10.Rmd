@@ -57,7 +57,6 @@ box_net_nll
 
 ```{r}
 ens_results_wide <- pivot_wider(ens_results, names_from = c(train_set, method), values_from = c(accuracy, nll))
-ens_results_wide
 ```
 
 Testing statistical significance of difference for training on validation and train data.
@@ -83,8 +82,16 @@ t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, alterna
 ```{r}
 t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter)
 ```
+```{r}
+t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter, alternative="less")
+```
+
 
 ```{r}
 t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc)
 ```
+```{r}
+t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc, alternative="less")
+```
+
 For all coupling methods, we found, that ensemble models trained on subset (of size 500) of the neural networks training set have statistically significantly better accuracy than ensemble models trained on separate validation set (of the same size).
