@@ -11,7 +11,9 @@ library(dplyr)
 library(tidyr)
 library("ggpubr")
 library(LDATS)
+library(ggVennDiagram)
 library(stringr)
+library(abind)
 
 source("utils.R")
 ```
@@ -31,7 +33,41 @@ ens_outputs <- load_ensemble_outputs(base_dir, repls, folds)
 net_results <- read.csv(file.path(base_dir, "net_accuracies.csv"))
 ens_results <- read.csv(file.path(base_dir, "ensemble_accuracies.csv"))
 ```
+```{r}
+sort_ind <- function(lst)
+{
+  return(sort(lst, index.return=TRUE, decreasing=TRUE)$ix)
+}
+nets_test_top_indices <- apply(X=nets_outputs$test_outputs, MARGIN=c(1, 2, 3), FUN=sort_ind)[1, , , ]
+r_n <- length(repls)
+samples_n <- dim(nets_outputs$test_labels)[2]
+nets_n <- length(nets_outputs$networks)
+test_labs <- nets_outputs$test_labels + 1
+dim(test_labs) <- c(r_n, 1, samples_n)
+test_labs <- aperm(abind(array(rep(aperm(test_labs, perm=c(2, 1, 3)), nets_n), c(r_n, samples_n, nets_n)), along=3), perm=c(1, 3, 2))
+nets_test_cor_preds <- test_labs == nets_test_top_indices
+```
 
+```{r}
+for (ri in 1:r_n)
+{
+  nets_cor_list <- list()
+  incor <- 1:samples_n
+  for (ni in 1:nets_n)
+  {
+    cor_list <- which(nets_test_cor_preds[ri, ni, ])
+    nets_cor_list[[nets_outputs$networks[ni]]] = cor_list
+    incor <- setdiff(incor, cor_list)
+  }
+  incor_n <- length(incor)
+  venn_diag <- ggVennDiagram(nets_cor_list) + scale_fill_gradient(trans="log10", name="count", limits=c(1, 10000)) +
+    annotate(geom="text", x=-4, y=5, label=paste("Incorrect ", incor_n, "\n", round(incor_n / samples_n * 100), "%")) +
+    ggtitle(paste("Correct predictions by network - replication ", ri)) +
+    scale_x_continuous(limits=c(-8, 10))
+  print(venn_diag)
+}
+```
+Compared to CIFAR10 examples, here are fewer samples correctly classified by all the networks. For one network exclusive correct classifications densenet and xception perform better than resnet. Pairs of network all have similar values with xception, resnet lagging a bit.
 
 ```{r}
 preds <- nets_outputs$test_outputs

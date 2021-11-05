@@ -344,8 +344,8 @@ load_lda_coefs <- function(outputs_path, replications, folds=NULL)
 #' Vector index spans along one dimension and picks data along another.
 #' Dimension along which index spans is given by index_dim,
 #' dimension along which it picks data is given by along.
-#' Outpus dimensions are same as data dimensions expect in 
-#' along dimension, where the outpus has size 1.
+#' Output dimensions are same as data dimensions expect in 
+#' along dimension, where the output has size 1.
 gather <- function(data, index, index_dim, along)
 {
   data_dim <- dim(data)
