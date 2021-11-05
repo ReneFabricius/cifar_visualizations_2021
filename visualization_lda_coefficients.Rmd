@@ -1,0 +1,120 @@
+---
+title: "Visualizations LDA coefficients"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library("ggpubr")
+library(LDATS)
+library(ggVennDiagram)
+library(stringr)
+library(abind)
+library(patchwork)
+
+source("utils.R")
+```
+
+
+
+```{r}
+base_dir <- "../data/data_train_val_c10"
+repls <- 0:29
+classes <- 10
+lda_coefs <- load_lda_coefs(base_dir, repls)
+net_pw_results <- read.csv(file.path(base_dir, "net_pw_accuracies.csv"))
+ens_pw_results <- read.csv(file.path(base_dir, "ensemble_pw_accuracies.csv"))
+net_pw_results[, c("class1", "class2")] <- lapply(net_pw_results[, c("class1", "class2")], as.factor)
+ens_pw_results[, c("class1", "class2")] <- lapply(ens_pw_results[, c("class1", "class2")], as.factor)
+```
+
+```{r}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    lda_plt <- lda_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_wrap(~train_type) + ggtitle("LDA coefficients")
+    acc_plt_net <- net_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(x=network, y=accuracy)) + 
+      geom_boxplot() + ggtitle("Pairwise accuracies of networks")
+    acc_plt_ens <- ens_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(y=accuracy)) +
+      geom_boxplot() + facet_wrap(~train_set) + ggtitle("Pairwise accuracies of LDA output") +
+      theme(axis.ticks.x=element_blank(), axis.text.x=element_blank())
+    
+    
+    print((acc_plt_net/lda_plt/acc_plt_ens) + plot_annotation(title=paste("Classes ", cl1, " vs ", cl2)))
+  }
+}
+```
+
+
+
+```{r}
+base_dir <- "../data/data_train_val_half_c10"
+repls <- 0:0
+folds <- 0:49
+classes <- 10
+lda_coefs <- load_lda_coefs(base_dir, repls, folds)
+net_pw_results <- read.csv(file.path(base_dir, "net_pw_accuracies.csv"))
+ens_pw_results <- read.csv(file.path(base_dir, "ensemble_pw_accuracies.csv"))
+net_pw_results[, c("class1", "class2")] <- lapply(net_pw_results[, c("class1", "class2")], as.factor)
+ens_pw_results[, c("class1", "class2")] <- lapply(ens_pw_results[, c("class1", "class2")], as.factor)
+```
+
+```{r}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    lda_plt <- lda_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_wrap(~train_type) + ggtitle("LDA coefficients")
+    acc_plt_net <- net_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(x=network, y=accuracy)) + 
+      geom_boxplot() + ggtitle("Pairwise accuracies of networks")
+    acc_plt_ens <- ens_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(y=accuracy)) +
+      geom_boxplot() + facet_wrap(~train_set) + ggtitle("Pairwise accuracies of LDA output") +
+      theme(axis.ticks.x=element_blank(), axis.text.x=element_blank())
+    
+    
+    print((acc_plt_net/lda_plt/acc_plt_ens) + plot_annotation(title=paste("Classes ", cl1, " vs ", cl2)))
+  }
+}
+```
+
+
+
+```{r}
+base_dir <- "../data/data_train_val_half_c100"
+repls <- 0:9
+folds <- 0:4
+classes <- 10
+lda_coefs <- load_lda_coefs(base_dir, repls, folds)
+net_pw_results <- read.csv(file.path(base_dir, "net_pw_accuracies.csv"))
+ens_pw_results <- read.csv(file.path(base_dir, "ensemble_pw_accuracies.csv"))
+net_pw_results[, c("class1", "class2")] <- lapply(net_pw_results[, c("class1", "class2")], as.factor)
+ens_pw_results[, c("class1", "class2")] <- lapply(ens_pw_results[, c("class1", "class2")], as.factor)
+```
+
+```{r}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    lda_plt <- lda_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_wrap(~train_type) + ggtitle("LDA coefficients")
+    acc_plt_net <- net_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(x=network, y=accuracy)) + 
+      geom_boxplot() + ggtitle("Pairwise accuracies of networks")
+    acc_plt_ens <- ens_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(y=accuracy)) +
+      geom_boxplot() + facet_wrap(~train_set) + ggtitle("Pairwise accuracies of LDA output") +
+      theme(axis.ticks.x=element_blank(), axis.text.x=element_blank())
+    
+    
+    print((acc_plt_net/lda_plt/acc_plt_ens) + plot_annotation(title=paste("Classes ", cl1, " vs ", cl2)))
+  }
+}
+```
+
+Here are too many class pair combinations to draw them all. TODO: think of some criteria to draw interesting ones. 
