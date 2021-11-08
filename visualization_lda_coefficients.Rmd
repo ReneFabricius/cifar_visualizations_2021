@@ -28,8 +28,14 @@ classes <- 10
 lda_coefs <- load_lda_coefs(base_dir, repls)
 net_pw_results <- read.csv(file.path(base_dir, "net_pw_accuracies.csv"))
 ens_pw_results <- read.csv(file.path(base_dir, "ensemble_pw_accuracies.csv"))
+ens_pw_cal <- read.csv(file.path(base_dir, "ensemble_pw_calibration.csv"))
+ens_pw_irrel <- read.csv(file.path(base_dir, "ensemble_pw_irrelevant.csv"))
 net_pw_results[, c("class1", "class2")] <- lapply(net_pw_results[, c("class1", "class2")], as.factor)
 ens_pw_results[, c("class1", "class2")] <- lapply(ens_pw_results[, c("class1", "class2")], as.factor)
+ens_pw_cal$bin_c <- (ens_pw_cal$conf_min + ens_pw_cal$conf_max) / 2
+ens_pw_cal[, c("class1", "class2", "bin_c")] <- lapply(ens_pw_cal[, c("class1", "class2", "bin_c")], as.factor)
+ens_pw_irrel[, c("class1", "class2")] <- lapply(ens_pw_irrel[, c("class1", "class2")], as.factor)
+
 ```
 
 ```{r}
@@ -39,8 +45,10 @@ for (cl1 in 1:(classes - 1))
   {
     lda_plt <- lda_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
       facet_wrap(~train_type) + ggtitle("LDA coefficients")
+    
     acc_plt_net <- net_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(x=network, y=accuracy)) + 
       geom_boxplot() + ggtitle("Pairwise accuracies of networks")
+    
     acc_plt_ens <- ens_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(y=accuracy)) +
       geom_boxplot() + facet_wrap(~train_set) + ggtitle("Pairwise accuracies of LDA output") +
       theme(axis.ticks.x=element_blank(), axis.text.x=element_blank())
@@ -50,6 +58,37 @@ for (cl1 in 1:(classes - 1))
   }
 }
 ```
+
+An attempt to visualize calibration of LDAs. Almost all elements are present near the zero and one probabilities, therefore the visualization is not very informative.
+```{r}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    cal_plt <- ens_pw_cal %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot() +
+      geom_boxplot(mapping=aes(x=bin_c, y=bin_accuracy)) + facet_wrap(~train_set) +
+      ggtitle(paste("Classes ", cl1, " vs ", cl2)) + xlab("Confidence") + ylab("Accuracy")
+    
+    print(cal_plt)
+  }
+}
+```
+```{r}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    irrel_plt <- ens_pw_irrel %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot() +
+      geom_histogram(mapping=aes(x=pred1), bins=30) + facet_wrap(~train_set) +
+      ggtitle(paste("Predictions for irrelevant classes by LDA ", cl1, " vs ", cl2)) +
+      xlab("Predicted probability")
+    
+    print(irrel_plt)
+  }
+}
+```
+These histograms show, that even for unknown classes, LDA most osten produces probabilities close to one and zero. One exception is val_train LDA for class pair 4 and 6, where probabilities are divided evenly. Also the confidence plot for this LDA looks sensibly.
+
 
 
 
