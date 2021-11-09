@@ -18,8 +18,10 @@ library(patchwork)
 
 source("utils.R")
 ```
+Visualizations on three sets of networks. First set consists of networks trained in 30 replications on CIFAR 10 training set with 500 sample validation set extracted randomly in each replication. Second set consists of networks trained in a single replication on half of CIFAR 10 training set. Third set are networks trained in 10 replications on half of CIFAR 100 training set.
 
 
+## CIFAR 10
 
 ```{r}
 base_dir <- "../data/data_train_val_c10"
@@ -38,7 +40,7 @@ ens_pw_irrel[, c("class1", "class2")] <- lapply(ens_pw_irrel[, c("class1", "clas
 
 ```
 
-```{r}
+```{r, fig.width=10, fig.height=8}
 for (cl1 in 1:(classes - 1))
 {
   for (cl2 in (cl1 + 1):classes)
@@ -90,7 +92,7 @@ for (cl1 in 1:(classes - 1))
 These histograms show, that even for unknown classes, LDA most osten produces probabilities close to one and zero. One exception is val_train LDA for class pair 4 and 6, where probabilities are divided evenly. Also the confidence plot for this LDA looks sensibly.
 
 
-
+## CIFAR 10 half
 
 ```{r}
 base_dir <- "../data/data_train_val_half_c10"
@@ -104,7 +106,7 @@ net_pw_results[, c("class1", "class2")] <- lapply(net_pw_results[, c("class1", "
 ens_pw_results[, c("class1", "class2")] <- lapply(ens_pw_results[, c("class1", "class2")], as.factor)
 ```
 
-```{r}
+```{r, fig.width=10, fig.height=8}
 for (cl1 in 1:(classes - 1))
 {
   for (cl2 in (cl1 + 1):classes)
@@ -123,7 +125,7 @@ for (cl1 in 1:(classes - 1))
 }
 ```
 
-
+## CIFAR 100 half
 
 ```{r}
 base_dir <- "../data/data_train_val_half_c100"
@@ -137,7 +139,7 @@ net_pw_results[, c("class1", "class2")] <- lapply(net_pw_results[, c("class1", "
 ens_pw_results[, c("class1", "class2")] <- lapply(ens_pw_results[, c("class1", "class2")], as.factor)
 ```
 
-```{r}
+```{r, fig.width=10, fig.height=8}
 for (cl1 in 1:(classes - 1))
 {
   for (cl2 in (cl1 + 1):classes)
