@@ -13,59 +13,143 @@ library(dplyr)
 
 Experiment code is in the file training_subsets_sizes_experiment.py.
 Experiment on CIFAR10 dataset.
-This experiment trains WeightedLDAEnsemble on various subsets of different sizes of data on which neural networks were trained. Subsets of the same size are disjoint. Three different coupling methods are used: method one and two from [@wu2004probability] and Bayes covariant method [@vsuch2016bayes]. Goal of this experiment is to determine, for which size of the LDA training set, the ensemble achieves the best performance.
+This experiment trains WeightedLinearEnsemble on various subsets of different sizes of data on which neural networks were trained. Subsets of the same size are disjoint. Three different coupling methods are used: method one and two from [@wu2004probability] and Bayes covariant method [@vsuch2016bayes]. Goal of this experiment is to determine, for which size of the LDA training set, the ensemble achieves the best performance.
 
 ```{r}
-acc_ens_subsets <- read.csv("../data/data_train_val_c10/1/exp_subsets_sizes_train_outputs/accuracies.csv", stringsAsFactors=TRUE)
-acc_nets <- read.csv("../data/data_train_val_c10/1/exp_subsets_sizes_train_outputs/net_accuracies.csv", stringsAsFactors=TRUE)
+acc_ens_subsets <- read.csv("../data/data_train_val_c10/0/exp_subsets_sizes_train_outputs/accuracies.csv", stringsAsFactors=TRUE)
+acc_nets <- read.csv("../data/data_train_val_c10/0/exp_subsets_sizes_train_outputs/net_accuracies.csv", stringsAsFactors=TRUE)
 ```
 
 ```{r}
-scatter <- ggplot() + geom_point(data=acc_ens_subsets, mapping=aes(x=train_size, y=accuracy, fill=method), alpha=0.7, pch=21) + geom_hline(data=acc_nets, mapping=aes(yintercept=accuracy, color=network), size=1)
+scatter <- ggplot() + geom_point(data=acc_ens_subsets, mapping=aes(x=train_size, y=accuracy, fill=coupling_method), alpha=0.7, pch=21) + facet_wrap(~combining_method) + geom_hline(data=acc_nets, mapping=aes(yintercept=accuracy, color=network), size=1)
 scatter
 ```
 ```{r}
-scatter2 <- ggplot() + geom_point(data=acc_ens_subsets, mapping=aes(x=train_size, y=accuracy, color=method), alpha=0.7)
+scatter2 <- ggplot() + geom_point(data=acc_ens_subsets, mapping=aes(x=train_size, y=accuracy, color=coupling_method), alpha=0.7) + facet_wrap(~combining_method)
 scatter2
 ```
 Scatter plots are quite messy, so we will use boxplots.
 
+## LDA
+
 ```{r}
 
-box_acc <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size)
+box_acc <- acc_ens_subsets %>% filter(combining_method=="lda") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size) + ggtitle("LDA")
 box_acc
 ```
 Accuracy seems to be slowly increasing with increasing training set size. We will inspect this closer by plotting for smaller subset sizes range.
 
 
 ```{r}
-acc_ens_subsets %>% filter(0 < train_size & train_size < 200) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size, nrow = 1)
+acc_ens_subsets %>% filter(0 < train_size & train_size < 200 & combining_method=="lda") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("LDA")
 ```
 ```{r}
-acc_ens_subsets %>% filter(100 < train_size & train_size < 500) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size, nrow = 1)
+acc_ens_subsets %>% filter(100 < train_size & train_size < 500 & combining_method=="lda") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("LDA")
 ```
 
 ```{r}
-acc_ens_subsets %>% filter(200 < train_size & train_size < 1000) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size, nrow = 1)
+acc_ens_subsets %>% filter(200 < train_size & train_size < 1000 & combining_method=="lda") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("LDA")
 ```
-Here the accuracy increase seems to be stopping at train set size 430.
+Here the accuracy increase seems to be stopping at train set size 604.
 
 ```{r}
-acc_ens_subsets %>% filter(500 < train_size & train_size < 3000) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size, nrow = 1)
+acc_ens_subsets %>% filter(500 < train_size & train_size < 3000 & combining_method=="lda") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("LDA")
 ```
 Here is visible some further increase, but it is not very stable and decreases again.
 ```{r}
-acc_ens_subsets %>% filter(1000 < train_size & train_size < 5000) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = accuracy, color=method)) + facet_wrap(~train_size, nrow = 1)
+acc_ens_subsets %>% filter(1000 < train_size & train_size < 5000 & combining_method=="lda") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("LDA")
 ```
 It seems, that from train set size around 1000 accuracy decreases again.
 
 ```{r}
-box_nll <- ggplot() + geom_boxplot(data=acc_ens_subsets, mapping=aes(x=method, y = nll, color=method)) + facet_wrap(~train_size)
+box_nll <- acc_ens_subsets %>% filter(combining_method=="lda") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = nll, color=coupling_method)) + facet_wrap(~train_size)  + ggtitle("LDA")
 box_nll
 ```
 Nll doesn't seem to be doing much with changing LDA train size. Still, this metric needs further attention because of the zero probabilities produced by ensemble.
 
 ```{r}
-acc_ens_subsets %>% filter(200 < train_size & train_size < 1000) %>% ggplot() + geom_boxplot(mapping=aes(x=method, y = nll, color=method)) + facet_wrap(~train_size, nrow = 1)
+acc_ens_subsets %>% filter(200 < train_size & train_size < 1000 & combining_method=="lda") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = nll, color=coupling_method)) + facet_wrap(~train_size, nrow = 1)  + ggtitle("LDA")
 ```
 
+
+## Logistic regression
+```{r}
+
+box_acc <- acc_ens_subsets %>% filter(combining_method=="logreg") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size) + ggtitle("Logistic regression")
+box_acc
+```
+Accuracy seems to be slowly increasing with increasing training set size. We will inspect this closer by plotting for smaller subset sizes range.
+
+
+```{r}
+acc_ens_subsets %>% filter(0 < train_size & train_size < 200 & combining_method=="logreg") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression")
+```
+
+```{r}
+acc_ens_subsets %>% filter(100 < train_size & train_size < 500 & combining_method=="logreg") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression")
+```
+
+```{r}
+acc_ens_subsets %>% filter(200 < train_size & train_size < 1000 & combining_method=="logreg") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression")
+```
+Here the accuracy increase seems to be stopping at train set size 604.
+
+```{r}
+acc_ens_subsets %>% filter(500 < train_size & train_size < 3000 & combining_method=="logreg") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression")
+```
+Here is visible some further increase, but it is not very stable and decreases again.
+```{r}
+acc_ens_subsets %>% filter(1000 < train_size & train_size < 5000 & combining_method=="logreg") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression")
+```
+
+
+```{r}
+box_nll <- acc_ens_subsets %>% filter(combining_method=="logreg") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = nll, color=coupling_method)) + facet_wrap(~train_size)  + ggtitle("Logistic regression")
+box_nll
+```
+Nll is decreasing with increasing train set size for up to size around 200, then it starts increasing.
+
+```{r}
+acc_ens_subsets %>% filter(0 < train_size & train_size < 500 & combining_method=="logreg") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = nll, color=coupling_method)) + facet_wrap(~train_size, nrow = 1)  + ggtitle("Logistic regression")
+```
+
+
+## Logistic regression without intercept
+```{r}
+
+box_acc <- acc_ens_subsets %>% filter(combining_method=="logreg_no_interc") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size) + ggtitle("Logistic regression without intercept")
+box_acc
+```
+Accuracy seems to be slowly increasing with increasing training set size. Coupling method bc achieves inferior results for some train sizes. We will inspect this closer by plotting for smaller subset sizes range.
+
+
+```{r}
+acc_ens_subsets %>% filter(0 < train_size & train_size < 200 & combining_method=="logreg_no_interc") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression without intercept")
+```
+```{r}
+acc_ens_subsets %>% filter(100 < train_size & train_size < 500 & combining_method=="logreg_no_interc") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression without intercept")
+```
+
+```{r}
+acc_ens_subsets %>% filter(200 < train_size & train_size < 1000 & combining_method=="logreg_no_interc") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression without intercept")
+```
+
+```{r}
+acc_ens_subsets %>% filter(500 < train_size & train_size < 3000 & combining_method=="logreg_no_interc") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression without intercept")
+```
+Here the accuracy increase seems to be stopping at train set size 839. However, accuracy of method bc is already decreasing.
+
+```{r}
+acc_ens_subsets %>% filter(1000 < train_size & train_size < 5000 & combining_method=="logreg_no_interc") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = accuracy, color=coupling_method)) + facet_wrap(~train_size, nrow = 1) + ggtitle("Logistic regression without intercept")
+```
+It seems, that from train set size around 1000 accuracy is stagnating.
+
+```{r}
+box_nll <- acc_ens_subsets %>% filter(combining_method=="logreg_no_interc") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = nll, color=coupling_method)) + facet_wrap(~train_size)  + ggtitle("Logistic regression without intercept")
+box_nll
+```
+Nll is decreasing with increasing train set size for up to size around 200, then it starts increasing.
+
+```{r}
+acc_ens_subsets %>% filter(0 < train_size & train_size < 500 & combining_method=="logreg_no_interc") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = nll, color=coupling_method)) + facet_wrap(~train_size, nrow = 1)  + ggtitle("Logistic regression without intercept")
+```
