@@ -153,3 +153,5 @@ Nll is decreasing with increasing train set size for up to size around 200, then
 ```{r}
 acc_ens_subsets %>% filter(0 < train_size & train_size < 500 & combining_method=="logreg_no_interc") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y = nll, color=coupling_method)) + facet_wrap(~train_size, nrow = 1)  + ggtitle("Logistic regression without intercept")
 ```
+
+In LDA and logistic regression with intercept, good tradeoff between train set size and good accuracy seems to be around 500. For logistic regression without intercept around 800. Negative log likelihood for lda seems mostly unaffected by changing train set size, for logistic regression it is minimal at around train set size 200.
