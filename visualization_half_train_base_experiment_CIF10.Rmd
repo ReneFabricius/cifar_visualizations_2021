@@ -12,13 +12,13 @@ library(tidyr)
 library("ggpubr")
 ```
 
-This experiment focuses on the question, whether training LDA on the same set of data as the neural networks were trained on has any adverse effects to the performance of the ensemble as opposed to training on a different set, not presented to the networks during the training.
+This experiment focuses on the question, whether training linear combining method on the same set of data as the neural networks were trained on has any adverse effects to the performance of the ensemble as opposed to training on a different set, not presented to the networks during the training.
 Experiment was performed with two slightly different approaches.
 
 Approach two
 Experiment code is in the file half_train_ensembling_experiment.py.
 Experiment on both CIFAR10 and CIFAR100 datasets.
-This experiment differs from the previous one in the neural networks training part. In this case, the networks were trained on half of the original training set. The remainder of the training set was extracted as a validation set. This enabled us to train several ensembles on both the training set and the validation set in each replication. Experiment on CIFAR10 was performed in 1 replication and experimennt on CIFAR100 in 10 replications. This is due to 10 times more classes in CIFAR100 and thus a need for 10 times larger LDA training set in order to maintain constant 50 samples for class in LDA models training.
+This experiment differs from the previous one in the neural networks training part. In this case, the networks were trained on half of the original training set. The remainder of the training set was extracted as a validation set. This enabled us to train several ensembles on both the training set and the validation set in each replication. Experiment on CIFAR10 was performed in 1 replication and experiment on CIFAR100 in 10 replications. This is due to 10 times more classes in CIFAR100 and thus a need for 10 times larger combiner training set in order to maintain constant 50 samples for class in combiner models training.
 
 Approach one is described in the file visualization_base_experiment.
 
@@ -30,15 +30,17 @@ net_results <- read.csv("../data/data_train_val_half_c10/net_accuracies.csv")
 ens_results <- read.csv("../data/data_train_val_half_c10/ensemble_accuracies.csv")
 ```
 ```{r}
-box_acc <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=accuracy)) + facet_wrap(~method) +
-  ggtitle("Accuracy of ensembles trained on different train sets")
+box_acc <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=accuracy, fill=train_set)) + 
+  facet_grid(rows=vars(combining_method), cols=vars(coupling_method)) +
+  ggtitle("Accuracy of ensembles with combining method trained on different train sets")
 box_acc
 ```
 Training on the same training data as the neural networks were trained on seems to provide better accuracy compared to training on separate validation set.
 
 ```{r}
-box_nll <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=nll)) + facet_wrap(~method) +
-  ggtitle("NLL of ensembles trained on different train sets")
+box_nll <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=nll, fill=train_set)) + 
+  facet_grid(rows=vars(combining_method), cols=vars(coupling_method)) +
+  ggtitle("NLL of ensembles with combining method trained on different train sets")
 box_nll
 ```
 For some reason NLL has opposite trend to accuracy - train set with better accuracy has worse (larger) NLL. This needs some further attention.
@@ -56,42 +58,59 @@ box_net_nll
 ```
 
 ```{r}
-ens_results_wide <- pivot_wider(ens_results, names_from = c(train_set, method), values_from = c(accuracy, nll))
+ens_results_wide <- pivot_wider(ens_results, names_from = c(train_set, coupling_method), values_from = c(accuracy, nll))
 ```
 
 Testing statistical significance of difference for training on validation and train data.
 We have 50 samples from each distribution, so we will suppose the distributions are normal.
 
 
+### LDA
 ```{r}
-t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1)
+ens_results_wide_lda <- ens_results_wide %>% filter(combining_method=="lda")
+t.test(ens_results_wide_lda$accuracy_vt_m1, ens_results_wide_lda$accuracy_tt_m1)
+t.test(ens_results_wide_lda$accuracy_vt_m1, ens_results_wide_lda$accuracy_tt_m1, alternative="less")
+
+t.test(ens_results_wide_lda$accuracy_vt_m2, ens_results_wide_lda$accuracy_tt_m2)
+t.test(ens_results_wide_lda$accuracy_vt_m2, ens_results_wide_lda$accuracy_tt_m2, alternative="less")
+
+t.test(ens_results_wide_lda$accuracy_vt_m2_iter, ens_results_wide_lda$accuracy_tt_m2_iter)
+t.test(ens_results_wide_lda$accuracy_vt_m2_iter, ens_results_wide_lda$accuracy_tt_m2_iter, alternative="less")
+
+t.test(ens_results_wide_lda$accuracy_vt_bc, ens_results_wide_lda$accuracy_tt_bc)
+t.test(ens_results_wide_lda$accuracy_vt_bc, ens_results_wide_lda$accuracy_tt_bc, alternative="less")
+```
+### LogReg
+```{r}
+ens_results_wide_logreg <- ens_results_wide %>% filter(combining_method=="logreg")
+t.test(ens_results_wide_logreg$accuracy_vt_m1, ens_results_wide_logreg$accuracy_tt_m1)
+t.test(ens_results_wide_logreg$accuracy_vt_m1, ens_results_wide_logreg$accuracy_tt_m1, alternative="less")
+
+t.test(ens_results_wide_logreg$accuracy_vt_m2, ens_results_wide_logreg$accuracy_tt_m2)
+t.test(ens_results_wide_logreg$accuracy_vt_m2, ens_results_wide_logreg$accuracy_tt_m2, alternative="less")
+
+t.test(ens_results_wide_logreg$accuracy_vt_m2_iter, ens_results_wide_logreg$accuracy_tt_m2_iter)
+t.test(ens_results_wide_logreg$accuracy_vt_m2_iter, ens_results_wide_logreg$accuracy_tt_m2_iter, alternative="less")
+
+t.test(ens_results_wide_logreg$accuracy_vt_bc, ens_results_wide_logreg$accuracy_tt_bc)
+t.test(ens_results_wide_logreg$accuracy_vt_bc, ens_results_wide_logreg$accuracy_tt_bc, alternative="less")
 ```
 
+### LogReg without intercept
 ```{r}
-t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1, alternative="less")
+ens_results_wide_logreg_ni <- ens_results_wide %>% filter(combining_method=="logreg_no_interc")
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m1, ens_results_wide_logreg_ni$accuracy_tt_m1)
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m1, ens_results_wide_logreg_ni$accuracy_tt_m1, alternative="less")
+
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m2, ens_results_wide_logreg_ni$accuracy_tt_m2)
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m2, ens_results_wide_logreg_ni$accuracy_tt_m2, alternative="less")
+
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m2_iter, ens_results_wide_logreg_ni$accuracy_tt_m2_iter)
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m2_iter, ens_results_wide_logreg_ni$accuracy_tt_m2_iter, alternative="less")
+
+t.test(ens_results_wide_logreg_ni$accuracy_vt_bc, ens_results_wide_logreg_ni$accuracy_tt_bc)
+t.test(ens_results_wide_logreg_ni$accuracy_vt_bc, ens_results_wide_logreg_ni$accuracy_tt_bc, alternative="less")
 ```
 
-```{r}
-t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2)
-```
-
-```{r}
-t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, alternative="less")
-```
-
-```{r}
-t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter)
-```
-```{r}
-t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter, alternative="less")
-```
-
-
-```{r}
-t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc)
-```
-```{r}
-t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc, alternative="less")
-```
 
 For all coupling methods, we found, that ensemble models trained on subset (of size 500) of the neural networks training set have statistically significantly better accuracy than ensemble models trained on separate validation set (of the same size).
