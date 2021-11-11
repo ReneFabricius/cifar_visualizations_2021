@@ -71,7 +71,7 @@ for (ri in 1:r_n)
   print(venn_diag)
 }
 ```
-In all replications, around 94% of data was correctly classified by all networks. Network with most exclusively correct predictions is in majority of replications densenet. Densenet annd resnet have in majority of replications most common correct predictions amongs the pairs of networks.
+In all replications, around 94% of data that was correctly classified was correctly classified by all networks. Network with most exclusively correct predictions is in majority of replications densenet. Densenet annd resnet have in majority of replications most common correct predictions amongs the pairs of networks.
 
 
 For clearer visualization, we will plot just the predicted probability of the correct class for all the methods.
@@ -107,58 +107,65 @@ Networks nll seems to have good correspondence with lowest prediction probabilit
 
 
 ```{r}
-val_ens_cor_probs <- gather(ens_outputs$val_training, 1 + nets_outputs$test_labels[1, ], 3, 4)
+val_ens_cor_probs <- gather(ens_outputs$val_training, 1 + nets_outputs$test_labels[1, ], 4, 5)
 val_ens_cor_probs <- melt(val_ens_cor_probs)
-val_ens_cor_probs <- val_ens_cor_probs[, c(-3, -4)]
-names(val_ens_cor_probs) <- c("replication", "method", "prediction")
-val_ens_cor_probs$method <- as.factor(val_ens_cor_probs$method)
-levels(val_ens_cor_probs$method) <- ens_outputs$methods
+val_ens_cor_probs <- val_ens_cor_probs[, c(-4, -5)]
+names(val_ens_cor_probs) <- c("replication", "combining_method", "coupling_method", "prediction")
+val_ens_cor_probs[, c("combining_method", "coupling_method")] <- lapply(val_ens_cor_probs[, c("combining_method", "coupling_method")], as.factor)
+levels(val_ens_cor_probs$combining_method) <- ens_outputs$combining_methods
+levels(val_ens_cor_probs$coupling_method) <- ens_outputs$coupling_methods
 ```
 
 
-```{r}
-val_ens_cor_preds_histo <- ggplot(data=val_ens_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on val")
+```{r, fig.width=14, fig.height=8}
+val_ens_cor_preds_histo <- ggplot(data=val_ens_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_grid(rows=vars(combining_method), cols=vars(coupling_method)) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on val")
 val_ens_cor_preds_histo
 ```
 
-Coupling method bc produces far fewer probabilities falling into the lowest bin for the correct class than m1 and m2.
+In the case of combining method lda, coupling method bc produces far fewer probabilities falling into the lowest bin for the correct class than m1 and m2. For the logistic regression combining method, predictions are distributed more smoothly and there are fewer predictions in the extreme values.
 
 
 ```{r}
-val_ens_zero_counts <- ggplot(data=val_ens_cor_probs[val_ens_cor_probs$prediction <= 0, ]) + geom_histogram(mapping=aes(x=method), stat="count") + ggtitle("Counts of zero or lower probabilities predicted for the correct class by coup m\nValidation training")
+val_ens_zero_counts <- ggplot(data=val_ens_cor_probs[val_ens_cor_probs$prediction <= 0, ]) + geom_histogram(mapping=aes(x=coupling_method), stat="count") + facet_wrap(~combining_method) + ggtitle("Counts of zero or lower probabilities predicted for the correct class by coup m\nValidation training")
 val_ens_zero_counts
 ```
-m2_iter and bc didn't produce any zero probability outputs in this replication.
+m2_iter and bc didn't produce any zero probability outputs. Neither were there any zero probability outputs for combining method logistic regression.
 
 ```{r}
-train_ens_cor_probs <- gather(ens_outputs$train_training, 1 + nets_outputs$test_labels[1, ], 3, 4)
+train_ens_cor_probs <- gather(ens_outputs$train_training, 1 + nets_outputs$test_labels[1, ], 4, 5)
 train_ens_cor_probs <- melt(train_ens_cor_probs)
-train_ens_cor_probs <- train_ens_cor_probs[, c(-3, -4)]
-names(train_ens_cor_probs) <- c("replication", "method", "prediction")
-train_ens_cor_probs$method <- as.factor(train_ens_cor_probs$method)
-levels(train_ens_cor_probs$method) <- ens_outputs$methods
+train_ens_cor_probs <- train_ens_cor_probs[, c(-4, -5)]
+names(train_ens_cor_probs) <- c("replication", "combining_method", "coupling_method", "prediction")
+train_ens_cor_probs[, c("combining_method", "coupling_method")] <- lapply(train_ens_cor_probs[, c("combining_method", "coupling_method")], as.factor)
+levels(train_ens_cor_probs$combining_method) <- ens_outputs$combining_methods
+levels(train_ens_cor_probs$coupling_method) <- ens_outputs$coupling_methods
 ```
 
 
-```{r}
-train_ens_cor_preds_histo <- ggplot(data=train_ens_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_wrap(~method) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on train")
+```{r, fig.width=14, fig.height=8}
+train_ens_cor_preds_histo <- ggplot(data=train_ens_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_grid(rows=vars(combining_method), cols=vars(coupling_method)) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class - ens trained on train")
 train_ens_cor_preds_histo
 ```
-Also in this case, coupling method bc produces far fewer probabilities falling into the lowest bin for the correct class than m1 and m2.
+Also in this case, for combining method lda, coupling method bc produces far fewer probabilities falling into the lowest bin for the correct class than m1 and m2. Outputs employing coumbining method logistic regression are much more smoothly distributed.
 
 ```{r}
-train_ens_zero_counts <- ggplot(data=train_ens_cor_probs[train_ens_cor_probs$prediction <= 0, ]) + geom_histogram(mapping=aes(x=method), stat="count") + ggtitle("Counts of zero or lower probabilities predicted for the correct class by coup m\nTrain training")
+train_ens_zero_counts <- ggplot(data=train_ens_cor_probs[train_ens_cor_probs$prediction <= 0, ]) + geom_histogram(mapping=aes(x=coupling_method), stat="count") + facet_wrap(~combining_method)  + ggtitle("Counts of zero or lower probabilities predicted for the correct class by coup m\nTrain training")
 train_ens_zero_counts
 ```
-m2_iter and bc didn't produce any zero probability outputs in this replication.
+m2_iter and bc didn't produce any zero probability outputs. Neither were there any zero probability outputs for combining method logistic regression.
 
 ```{r}
-val_ens_nll <- ggplot(data=ens_results) + geom_boxplot(mapping=aes(x=method, y=nll)) + facet_wrap(~train_set) +
-  ggtitle("Comparison of nll for coupling methods for different LDA train methodologies")
+val_ens_nll <- ggplot(data=ens_results) + geom_boxplot(mapping=aes(x=coupling_method, y=nll)) + facet_grid(cols=vars(train_set), rows=vars(combining_method)) +
+  ggtitle("Comparison of nll for coupling methods for different combiner train methodologies")
 val_ens_nll
 ```
-When LDA is trained on training data, bc method has clearly superior nll, however in the case of training LDA on validation data, other coupling methods perform similarly, or better.
+For combining method lda, coupling method bc has by far best results. For other combining methods, bc is still best, but the difference is much smaller.
 
+```{r}
+val_ens_nll <- ens_results %>% filter(combining_method!="lda") %>% ggplot() + geom_boxplot(mapping=aes(x=coupling_method, y=nll)) + facet_grid(cols=vars(train_set), rows=vars(combining_method)) +
+  ggtitle("Comparison of nll for coupling methods for different combiner train methodologies")
+val_ens_nll
+```
 
 
 ```{r}
@@ -167,53 +174,48 @@ train_ens_cor_probs$train_type <- "tt"
 ens_cor_probs <- rbind(val_ens_cor_probs, train_ens_cor_probs)
 ```
 
-```{r}
-ens_cor_preds_histo <- ggplot(data=ens_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_grid(rows=vars(method), cols=vars(train_type)) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class")
+```{r, fig.width=14, fig.height=8}
+ens_cor_preds_histo <- ggplot(data=ens_cor_probs) + geom_histogram(mapping=aes(x=prediction), binwidth=0.01) + facet_grid(rows=vars(combining_method, coupling_method), cols=vars(train_type)) + scale_y_log10() + ggtitle("Probabilities predicted for the correct class")
 ens_cor_preds_histo
 ```
-Bayes covariant coupling method produces more uniformly distributed predictions than methods m1 and m2. Also, there is a big difference in each method between ensemble trained on validation and ensemble trained on train set. Ensembles trained on validation set produce generally more uniformly distributed predictions. However, ensembles trained on training set attain statistically significantly higher accuracy.
+For combining method lda Bayes covariant coupling method produces more uniformly distributed predictions than methods m1 and m2. Also, there is a big difference in each method between ensemble trained on validation and ensemble trained on train set. Ensembles trained on validation set produce generally more uniformly distributed predictions. However, ensembles trained on training set attain statistically significantly higher accuracy.
+For other combining methods, predictions are smoothly distributed for both training methodologies. Also in this case, ensembles trained on training set attain statistically significantly higher accuracy.
 
 
 ```{r}
-ens_Rs <- load_R_matrices(base_dir, repls)
+df_val_Rs <- melt(np$load(file.path(base_dir, "val_training_class_aggr_R.npy")))
+df_train_Rs <- melt(np$load(file.path(base_dir, "train_training_class_aggr_R.npy")))
+co_m_R <- read.csv(file.path(base_dir, "R_mat_co_m_names.csv"), header=FALSE)
 ```
 
 ```{r}
-df_val_Rs <- melt(ens_Rs$val_training)
-names(df_val_Rs) <- c("replication", "precision", "sample", "class1", "class2", "prob")
-class <- nets_outputs$test_labels[1, df_val_Rs$sample] + 1
-df_val_Rs$class <- as.factor(class)
-df_val_Rs[,c("class1", "class2")] <- lapply(df_val_Rs[,c("class1", "class2")], factor)
-val_class_mean_Rs <- df_val_Rs %>% group_by(precision, class1, class2, class) %>% summarise(prob=mean(prob)) %>% ungroup()
+names(df_val_Rs) <- c("combining_method", "precision", "class", "class1", "class2", "prob")
+names(df_train_Rs) <- c("combining_method", "precision", "class", "class1", "class2", "prob")
 
-```
+df_val_Rs[,c("class", "class1", "class2", "combining_method")] <- lapply(df_val_Rs[,c("class", "class1", "class2", "combining_method")], as.factor)
+df_train_Rs[,c("class", "class1", "class2", "combining_method")] <- lapply(df_train_Rs[,c("class", "class1", "class2", "combining_method")], as.factor)
 
-```{r}
-df_train_Rs <- melt(ens_Rs$train_training)
-names(df_train_Rs) <- c("replication", "precision", "sample", "class1", "class2", "prob")
-class <- nets_outputs$test_labels[1, df_train_Rs$sample] + 1
-df_train_Rs$class <- as.factor(class)
-df_train_Rs[,c("class1", "class2")] <- lapply(df_train_Rs[,c("class1", "class2")], factor)
-train_class_mean_Rs <- df_train_Rs %>% group_by(precision, class1, class2, class) %>% summarise(prob=mean(prob)) %>% ungroup()
+levels(df_val_Rs$combining_method) <- co_m_R$V1
+levels(df_train_Rs$combining_method) <- co_m_R$V1
 
 ```
 
 ```{r}
-val_class_mean_Rs$train_type <- "vt"
-train_class_mean_Rs$train_type <- "tt"
-class_mean_Rs <- rbind(val_class_mean_Rs, train_class_mean_Rs)
+df_val_Rs$train_type <- "vt"
+df_train_Rs$train_type <- "tt"
+class_mean_Rs <- rbind(df_val_Rs, df_train_Rs)
 
 df_aggr_Rs_diff <- class_mean_Rs %>% pivot_wider(names_from = train_type, values_from = prob) %>% mutate(val_min_train = vt - tt)
 ```
 
 
-```{r}
+```{r, fig.height=8, fig.width=6}
 for (cls in 1:classes)
 {
   cur_class_Rs <- class_mean_Rs %>% filter(class == cls)
   plot_cls <-  ggplot(cur_class_Rs, aes(x = class2, y = class1)) + 
     geom_raster(aes(fill=prob)) + 
-    facet_wrap(~train_type) +
+    facet_grid(rows=vars(combining_method), cols=vars(train_type)) +
     scale_fill_gradient(low="grey90", high="red", limits=c(0, 1)) +
     scale_y_discrete(limits=rev) +
     labs(x="class 2", y="class 1", title=paste("Average pairwise probabilities - class ", cls)) +
@@ -222,25 +224,31 @@ for (cls in 1:classes)
   print(plot_cls)
 }
 ```
+lda has more cells with false high values than logreg.
 
-```{r}
+```{r, fig.width=8, fig.height=3}
 for (cls in 1:classes)
 {
   cur_class_Rs <- df_aggr_Rs_diff %>% filter(class == cls)
   plot_cls <-  ggplot(cur_class_Rs, aes(x = class2, y = class1)) + 
     geom_raster(aes(fill=val_min_train)) + 
+    facet_wrap(~combining_method) +
     scale_fill_binned(type="viridis", limits=c(-0.3, 0.3), name="validation minus training") +
-    scale_y_discrete(limits=rev, breaks=seq(0, classes, 10)) +
-    scale_x_discrete(breaks=seq(0, classes, 10)) +
+    scale_y_discrete(limits=rev) +
     labs(x="class 2", y="class 1", title=paste("Differences between average pairwise probabilities - class ", cls)) +
     theme_bw()
   
   print(plot_cls)
 }
 ```
+Logistic regression without intercept has lower differences between tt and vt R matrices than other combining methods. 
+
+
+
+
 
 ```{r}
-lda_coefs <- load_lda_coefs(base_dir, repls)
+combiner_coefs <- load_combiner_coefs(base_dir, repls)
 ```
 
 ```{r}
@@ -248,40 +256,40 @@ for (cl1 in 1:(classes - 1))
 {
   for (cl2 in (cl1 + 1):classes)
   {
-    cur_plt <- lda_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
-      facet_wrap(~train_type) + ggtitle(paste("Coefficients for class", cl1, "vs", cl2))
+    cur_plt <- combiner_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_grid(cols=vars(train_type), rows=vars(combining_method)) + ggtitle(paste("Coefficients for class", cl1, "vs", cl2))
     print(cur_plt)
   }
 }
 ```
+Logistic regression coefficients are much smaller than lda, it is probably due to l2 normalization used during logreg training.
 
 ```{r}
-avg_lda_coefs <- lda_coefs %>% filter(coefficient != "interc") %>% group_by(class1, class2, precision, train_type, coefficient) %>% summarise( value = mean(value)) %>% ungroup()
-avg_lda_coefs_vt <- avg_lda_coefs %>% filter(train_type=="val_training")
-avg_lda_coefs_tt <- avg_lda_coefs %>% filter(train_type=="train_training")
-avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value - min(avg_lda_coefs_vt$value)
-avg_lda_coefs_vt$value <- avg_lda_coefs_vt$value / max(avg_lda_coefs_vt$value)
-avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value - min(avg_lda_coefs_tt$value)
-avg_lda_coefs_tt$value <- avg_lda_coefs_tt$value / max(avg_lda_coefs_tt$value)
-avg_lda_coefs <- rbind(avg_lda_coefs_vt, avg_lda_coefs_tt)
-avg_lda_c_w <- pivot_wider(avg_lda_coefs, names_from = coefficient, values_from = value)
-avg_lda_c_w[, c("class1", "class2")] <- lapply(avg_lda_c_w[, c("class1", "class2")], as.factor)
-avg_lda_c_w$top_net <- factor(c("densenet121", "resnet34", "xception")[max.col(as.matrix(avg_lda_c_w[, c("densenet121", "resnet34", "xception")]))])
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    cur_plt <- combiner_coefs %>% filter(class1 == cl1 & class2 == cl2 & combining_method!="lda") %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_grid(cols=vars(train_type), rows=vars(combining_method)) + ggtitle(paste("Coefficients for class", cl1, "vs", cl2))
+    print(cur_plt)
+  }
+}
+```
+Validation training has higher variance in all coefficients. The difference is largest in intercept.
+
+```{r}
+avg_combiner_coefs <- combiner_coefs %>% filter(coefficient != "interc") %>% group_by(class1, class2, precision, train_type, coefficient, combining_method) %>% summarise( value = mean(value)) %>% ungroup()
+
+avg_combiner_c_w <- pivot_wider(avg_combiner_coefs, names_from = coefficient, values_from = value)
+avg_combiner_c_w[, c("class1", "class2")] <- lapply(avg_combiner_c_w[, c("class1", "class2")], as.factor)
+avg_combiner_c_w$top_net <- factor(c("densenet121", "resnet34", "xception")[max.col(as.matrix(avg_combiner_c_w[, c("densenet121", "resnet34", "xception")]))])
 ```
 
-```{r}
-raster_plot <- ggplot(avg_lda_c_w) + 
-  geom_tile(aes(x=class2, y=class1, fill=rgb(densenet121, resnet34, xception))) +
-  scale_y_discrete(limits=rev, breaks=seq(0,classes, 10)) + scale_x_discrete(breaks=seq(0,classes, 10)) + scale_fill_identity() + facet_wrap(~train_type) + ggtitle("RGB image formed from lda coefficients for networks densenet, resnet, xception")
-raster_plot
-```
-Correspondence between colors and networks is red - densenet, green - resnet, blue - xception.
-
-```{r}
-coefs_grid <- ggplot(avg_lda_c_w, aes(x=class2, y=class1, fill=top_net)) + 
+```{r, fig.height=8, fig.width=7}
+coefs_grid <- ggplot(avg_combiner_c_w, aes(x=class2, y=class1, fill=top_net)) + 
   geom_raster() + 
   scale_fill_brewer(type="qual") +
-  facet_wrap(~train_type) +
+  facet_grid(cols=vars(train_type), rows=vars(combining_method)) +
   scale_y_discrete(limits=rev) +
   geom_vline(xintercept=seq(-0.5, 9.5, 1.0)) + 
   geom_hline(yintercept=seq(-0.5, 9.5, 1.0)) +
@@ -296,4 +304,4 @@ coefs_grid <- ggplot(avg_lda_c_w, aes(x=class2, y=class1, fill=top_net)) +
 
 coefs_grid
 ```
-Densenet is clearly dominant for both LDA training methodologies.
+Densenet is clearly dominant for both LDA training methodologies. Surprisingly for logreg is dominant resnet in the tt case and mix of densenet and resnet in vt case. For all combining methods, training methodology tt provided better accuracy.

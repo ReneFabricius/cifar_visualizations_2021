@@ -61,57 +61,78 @@ load_ensemble_outputs <- function(outputs_path, replications, folds=NULL)
   outputs_match <- "ens_test_outputs_"
   if (is.null(folds))
   {
-    pattern <- paste("^", outputs_match, "(.*).npy$", sep="")
+    pattern <- paste("^", outputs_match, "co_(.*?)_cp_(.*?)_prec_(.*?).npy$", sep="")
   }
   else
   {
-    pattern <- paste("^fold_\\d+_", outputs_match, "(.*).npy$", sep="")
+    pattern <- paste("^fold_\\d+_", outputs_match, "co_(.*?)_cp_(.*?)_prec_(.*?).npy$", sep="")
   }
   files <- list.files(
     file.path(outputs_path, replications[1], outputs_folder, train_types[1]), 
     recursive=FALSE, full.names=FALSE)
-  methods <- str_match(files, pattern)[, 2]
-  methods <- methods[!is.na(methods)]
-  methods <- unique(methods)
+  files_match <- str_match(files, pattern)
+  combining_methods <- files_match[, 2]
+  combining_methods <- unique(combining_methods[!is.na(combining_methods)])
+  coupling_methods <- files_match[, 3]
+  coupling_methods <- unique(coupling_methods[!is.na(coupling_methods)])
+  precision <- files_match[, 4]
+  precision <- unique(precision[!is.na(precision)])
+  
+  if (length(precision) > 1)
+  {
+    print("Load ensemble outputs in multiple precisions not supported.")
+    return(NA)
+  }
   
   output <- hash()
-  output[["methods"]] <- methods
+  output[["combining_methods"]] <- combining_methods
+  output[["coupling_methods"]] <- coupling_methods
+  output[["precision"]] <- precision
   for (t_type in train_types)
   {
     outputs_list_rep <- list()
     li_rep <- 1
     for (repli in replications)
     {
-      outputs_list_met <- list()
-      li_met <- 1
-      for (method in methods)
+      outputs_list_co_m <- list()
+      li_co_m <- 1
+      for (co_m in combining_methods)
       {
-        if (is.null(folds))
+        outputs_list_cp_m <- list()
+        li_cp_m <- 1
+        for (cp_m in coupling_methods)
         {
-          file_name <- paste(outputs_match, method, ".npy", sep = "")
-          output_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
-          out_met <- np$load(output_path)
-        }
-        else
-        {
-          outputs_list_fold <- list()
-          li_fold <- 1
-          for (foldi in folds)
+          if (is.null(folds))
           {
-            file_name <- paste("fold_", foldi, "_", outputs_match, method, ".npy", sep="")
+            file_name <- paste(outputs_match, "co_", co_m, "_cp_", cp_m, "_prec_", precision[1], ".npy", sep = "")
             output_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
-            out_fold <- np$load(output_path)
-            dim(out_fold) <- c(1, dim(out_fold))
-            outputs_list_fold[[li_fold]] <- out_fold
-            li_fold <- li_fold + 1
+            out_cp_m <- np$load(output_path)
           }
-          out_met <- do.call(abind::abind, list(outputs_list_fold, along=1, use.dnns=TRUE))
+          else
+          {
+            outputs_list_fold <- list()
+            li_fold <- 1
+            for (foldi in folds)
+            {
+              file_name <- paste("fold_", foldi, "_", outputs_match, "co_", co_m, "_cp_", cp_m, "_prec_", precision[1], ".npy", sep="")
+              output_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
+              out_fold <- np$load(output_path)
+              dim(out_fold) <- c(1, dim(out_fold))
+              outputs_list_fold[[li_fold]] <- out_fold
+              li_fold <- li_fold + 1
+            }
+            out_cp_m <- do.call(abind::abind, list(outputs_list_fold, along=1, use.dnns=TRUE))
+          }
+          dim(out_cp_m) <- c(1, dim(out_cp_m))
+          outputs_list_cp_m[[li_cp_m]] <- out_cp_m
+          li_cp_m <- li_cp_m + 1
         }
-        dim(out_met) <- c(1, dim(out_met))
-        outputs_list_met[[li_met]] <- out_met
-        li_met <- li_met + 1
+        out_co_m <- do.call(abind::abind, list(outputs_list_cp_m, along=1, use.dnns=TRUE))
+        dim(out_co_m) <- c(1, dim(out_co_m))
+        outputs_list_co_m[[li_co_m]] <- out_co_m
+        li_co_m <- li_co_m + 1
       }
-      out_rep <- do.call(abind::abind, list(outputs_list_met, along=1, use.dnns=TRUE))
+      out_rep <- do.call(abind::abind, list(outputs_list_co_m, along=1, use.dnns=TRUE))
       dim(out_rep) <- c(1, dim(out_rep))
       outputs_list_rep[[li_rep]] <- out_rep
       li_rep <- li_rep + 1
@@ -130,21 +151,24 @@ load_R_matrices <- function(outputs_path, replications, folds=NULL)
   outputs_match <- "ens_test_R_"
   if (is.null(folds))
   {
-    pattern <- paste("^", outputs_match, "(.*).npy$", sep="")
+    pattern <- paste("^", outputs_match, "co_(.*?)_prec_(.*?).npy$", sep="")
   }
   else
   {
-    pattern <- paste("^fold_\\d+_", outputs_match, "(.*).npy$", sep="")
+    pattern <- paste("^fold_\\d+_", outputs_match, "co_(.*?)_prec_(.*?).npy$", sep="")
   }
   files <- list.files(
     file.path(outputs_path, replications[1], outputs_folder, train_types[1]), 
     recursive=FALSE, full.names=FALSE)
-  precisions <- str_match(files, pattern)[, 2]
-  precisions <- precisions[!is.na(precisions)]
-  precisions <- unique(precisions)
+  files_match <- str_match(files, pattern)
+  combining_methods <- files_match[, 2]
+  combining_methods <- unique(combining_methods[!is.na(combining_methods)])
+  precisions <- files_match[, 3]
+  precisions <- unique(precisions[!is.na(precisions)])
   
   output <- hash()
   output[["precisions"]] <- precisions
+  output[["combining_methods"]] <- combining_methods
   
   for (t_type in train_types)
   {
@@ -152,36 +176,45 @@ load_R_matrices <- function(outputs_path, replications, folds=NULL)
     li_rep <- 1
     for (repli in replications)
     {
-      outputs_list_prec <- list()
-      li_prec <- 1
-      for (prec in precisions)
+      outputs_list_co_m <- list()
+      li_co_m <- 1
+      for (co_m in combining_methods)
       {
-        if (is.null(folds))
+        outputs_list_prec <- list()
+        li_prec <- 1
+        for (prec in precisions)
         {
-          file_name <- paste(outputs_match, prec, ".npy", sep = "")
-          output_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
-          out_prec <- np$load(output_path)
-        }
-        else
-        {
-          outputs_list_fold <- list()
-          li_fold <- 1
-          for (foldi in folds)
+          if (is.null(folds))
           {
-            file_name <- paste("fold_", foldi, "_", outputs_match, prec, ".npy", sep="")
+            file_name <- paste(outputs_match, "co_", co_m, "_prec_", prec, ".npy", sep = "")
             output_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
-            out_fold <- np$load(output_path)
-            dim(out_fold) <- c(1, dim(out_fold))
-            outputs_list_fold[[li_fold]] <- out_fold
-            li_fold <- li_fold + 1
+            out_prec <- np$load(output_path)
           }
-          out_prec <- do.call(abind::abind, list(outputs_list_fold, along=1, use.dnns=TRUE))
+          else
+          {
+            outputs_list_fold <- list()
+            li_fold <- 1
+            for (foldi in folds)
+            {
+              file_name <- paste("fold_", foldi, "_", outputs_match, "co_", co_m, "_prec_", prec, ".npy", sep="")
+              output_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
+              out_fold <- np$load(output_path)
+              dim(out_fold) <- c(1, dim(out_fold))
+              outputs_list_fold[[li_fold]] <- out_fold
+              li_fold <- li_fold + 1
+            }
+            out_prec <- do.call(abind::abind, list(outputs_list_fold, along=1, use.dnns=TRUE))
+          }
+          dim(out_prec) <- c(1, dim(out_prec))
+          outputs_list_prec[[li_prec]] <- out_prec
+          li_prec <- li_prec + 1
         }
-        dim(out_prec) <- c(1, dim(out_prec))
-        outputs_list_prec[[li_prec]] <- out_prec
-        li_prec <- li_prec + 1
+        out_co_m <- do.call(abind::abind, list(outputs_list_prec, along=1, use.dnns=TRUE))
+        dim(out_co_m) <- c(1, dim(out_co_m))
+        outputs_list_co_m[[li_co_m]] <- out_co_m
+        li_co_m <- li_co_m + 1
       }
-      out_rep <- do.call(abind::abind, list(outputs_list_prec, along=1, use.dnns=TRUE))
+      out_rep <- do.call(abind::abind, list(outputs_list_co_m, along=1, use.dnns=TRUE))
       dim(out_rep) <- c(1, dim(out_rep))
       outputs_list_rep[[li_rep]] <- out_rep
       li_rep <- li_rep + 1
@@ -265,7 +298,7 @@ load_class_averaged_R_matrices <- function(outputs_path, labels, replications, f
   return(class_aggreg_Rs)
 }
 
-load_lda_coefs <- function(outputs_path, replications, folds=NULL)
+load_combiner_coefs <- function(outputs_path, replications, folds=NULL)
 {
   train_types <- c("train_training", "val_training")
   outputs_folder <- "comb_outputs"
@@ -273,18 +306,20 @@ load_lda_coefs <- function(outputs_path, replications, folds=NULL)
   outputs_match <- "lda_coefs_"
   if (is.null(folds))
   {
-    pattern <- paste("^", outputs_match, "(.*).csv$", sep="")
+    pattern <- paste("^(.*?)_coefs_(.*).csv$", sep="")
   }
   else
   {
-    pattern <- paste("^fold_\\d+_", outputs_match, "(.*).csv$", sep="")
+    pattern <- paste("^fold_\\d+_(.*?)_coefs_(.*).csv$", sep="")
   }
   files <- list.files(
     file.path(outputs_path, replications[1], outputs_folder, train_types[1]), 
     recursive=FALSE, full.names=FALSE)
-  precisions <- str_match(files, pattern)[, 2]
-  precisions <- precisions[!is.na(precisions)]
-  precisions <- unique(precisions)
+  file_match <- str_match(files, pattern)
+  combining_methods <- file_match[, 2]
+  combining_methods <- unique(combining_methods[!is.na(combining_methods)])
+  precisions <- file_match[, 3]
+  precisions <- unique(precisions[!is.na(precisions)])
   
   output <- data.frame()
   for (t_type in train_types)
@@ -293,28 +328,34 @@ load_lda_coefs <- function(outputs_path, replications, folds=NULL)
     for (repli in replications)
     {
       repli_df <- data.frame()
-      for (prec in precisions)
+      for (co_m in combining_methods)
       {
-        prec_df <- data.frame()
-        if (is.null(folds))
+        co_m_df <- data.frame()
+        for (prec in precisions)
         {
-          file_name <- paste(outputs_match, prec, ".csv", sep = "")
-          file_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
-          prec_df <- read.csv(file_path)
-        }
-        else
-        {
-          for (foldi in folds)
+          prec_df <- data.frame()
+          if (is.null(folds))
           {
-            file_name <- paste("fold_", foldi, "_", outputs_match, prec, ".csv", sep="")
+            file_name <- paste(co_m, "_coefs_", prec, ".csv", sep = "")
             file_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
-            fold_df <- read.csv(file_path)
-            fold_df$fold <- foldi
-            prec_df <- rbind(prec_df, fold_df)
+            prec_df <- read.csv(file_path)
           }
+          else
+          {
+            for (foldi in folds)
+            {
+              file_name <- paste("fold_", foldi, "_", co_m, "_coefs_", prec, ".csv", sep="")
+              file_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
+              fold_df <- read.csv(file_path)
+              fold_df$fold <- foldi
+              prec_df <- rbind(prec_df, fold_df)
+            }
+          }
+          prec_df$precision <- prec
+          co_m_df <- rbind(co_m_df, prec_df)
         }
-        prec_df$precision <- prec
-        repli_df <- rbind(repli_df, prec_df)
+        co_m_df$combining_method <- co_m
+        repli_df <- rbind(repli_df, co_m_df)
       }
       repli_df$replication <- repli
       type_df <- rbind(type_df, repli_df)
