@@ -43,7 +43,7 @@ box_nll <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, 
   ggtitle("NLL of ensembles with combining method trained on different train sets")
 box_nll
 ```
-For some reason NLL has opposite trend to accuracy - train set with better accuracy has worse (larger) NLL. This needs some further attention.
+In case of lda for some reason NLL has opposite trend to accuracy - train set with better accuracy has worse (larger) NLL. This needs some further attention.
 
 ```{r}
 box_net_acc <- ggplot() + geom_boxplot(data=net_results, mapping=aes(x=network, y=accuracy)) +

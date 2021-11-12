@@ -29,18 +29,29 @@ net_results <- read.csv("../data/data_train_val_half_c100/net_accuracies.csv")
 ens_results <- read.csv("../data/data_train_val_half_c100/ensemble_accuracies.csv")
 ```
 ```{r}
-box_acc <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=accuracy)) + facet_wrap(~method) +
-  ggtitle("Accuracy of ensembles trained on different train sets")
+box_acc <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=accuracy, fill=train_set)) +
+  facet_grid(rows=vars(combining_method), cols=vars(coupling_method)) +
+  ggtitle("Accuracy of ensembles with combining method trained on different train sets")
 box_acc
 ```
-Training on the same training data as the neural networks were trained on seems to provide better accuracy compared to training on separate validation set. This difference is bigger for bc coupling method, than for m1 and m2.
+Training on the same training data as the neural networks were trained on seems to provide better accuracy compared to training on separate validation set. In case of lda is this difference bigger for bc coupling method, than for m1 and m2.
 
 
 ```{r}
-box_nll <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=nll)) + facet_wrap(~method) +
-  ggtitle("NLL of ensembles trained on different train sets")
+box_nll <- ggplot() + geom_boxplot(data=ens_results, mapping = aes(x=train_set, y=nll, fill=train_set)) + 
+  facet_grid(rows=vars(combining_method), cols=vars(coupling_method)) +
+  ggtitle("NLL of ensembles with combining method trained on different train sets")
 box_nll
 ```
+
+```{r}
+box_nll <- ens_results %>% filter(combining_method!="lda") %>% ggplot() + geom_boxplot(mapping = aes(x=train_set, y=nll, fill=train_set)) + 
+  geom_boxplot(data=net_results, mapping=aes(y=nll, color=network), size=1) +
+  facet_grid(rows=vars(combining_method), cols=vars(coupling_method)) +
+  ggtitle("NLL of ensembles with combining method trained on different train sets")
+box_nll
+```
+
 For some reason NLL has opposite trend to accuracy - train set with better accuracy has worse (larger) NLL. This needs some further attention.
 
 ```{r}
@@ -56,42 +67,58 @@ box_net_nll
 ```
 
 ```{r}
-ens_results_wide <- pivot_wider(ens_results, names_from = c(train_set, method), values_from = c(accuracy, nll))
+ens_results_wide <- pivot_wider(ens_results, names_from = c(train_set, coupling_method), values_from = c(accuracy, nll))
 ```
 
 Testing statistical significance of difference for training on validation and train data.
 We have 50 samples from each distribution, so we will suppose the distributions are normal.
 
+
+### LDA
 ```{r}
-t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1)
+ens_results_wide_lda <- ens_results_wide %>% filter(combining_method=="lda")
+t.test(ens_results_wide_lda$accuracy_vt_m1, ens_results_wide_lda$accuracy_tt_m1)
+t.test(ens_results_wide_lda$accuracy_vt_m1, ens_results_wide_lda$accuracy_tt_m1, alternative="less")
+
+t.test(ens_results_wide_lda$accuracy_vt_m2, ens_results_wide_lda$accuracy_tt_m2)
+t.test(ens_results_wide_lda$accuracy_vt_m2, ens_results_wide_lda$accuracy_tt_m2, alternative="less")
+
+t.test(ens_results_wide_lda$accuracy_vt_m2_iter, ens_results_wide_lda$accuracy_tt_m2_iter)
+t.test(ens_results_wide_lda$accuracy_vt_m2_iter, ens_results_wide_lda$accuracy_tt_m2_iter, alternative="less")
+
+t.test(ens_results_wide_lda$accuracy_vt_bc, ens_results_wide_lda$accuracy_tt_bc)
+t.test(ens_results_wide_lda$accuracy_vt_bc, ens_results_wide_lda$accuracy_tt_bc, alternative="less")
 ```
 
+### LogReg
 ```{r}
-t.test(ens_results_wide$accuracy_vt_m1, ens_results_wide$accuracy_tt_m1, alternative="less")
+ens_results_wide_logreg <- ens_results_wide %>% filter(combining_method=="logreg")
+t.test(ens_results_wide_logreg$accuracy_vt_m1, ens_results_wide_logreg$accuracy_tt_m1)
+t.test(ens_results_wide_logreg$accuracy_vt_m1, ens_results_wide_logreg$accuracy_tt_m1, alternative="less")
+
+t.test(ens_results_wide_logreg$accuracy_vt_m2, ens_results_wide_logreg$accuracy_tt_m2)
+t.test(ens_results_wide_logreg$accuracy_vt_m2, ens_results_wide_logreg$accuracy_tt_m2, alternative="less")
+
+t.test(ens_results_wide_logreg$accuracy_vt_m2_iter, ens_results_wide_logreg$accuracy_tt_m2_iter)
+t.test(ens_results_wide_logreg$accuracy_vt_m2_iter, ens_results_wide_logreg$accuracy_tt_m2_iter, alternative="less")
+
+t.test(ens_results_wide_logreg$accuracy_vt_bc, ens_results_wide_logreg$accuracy_tt_bc)
+t.test(ens_results_wide_logreg$accuracy_vt_bc, ens_results_wide_logreg$accuracy_tt_bc, alternative="less")
 ```
 
+### LogReg without intercept
 ```{r}
-t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2)
-```
+ens_results_wide_logreg_ni <- ens_results_wide %>% filter(combining_method=="logreg_no_interc")
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m1, ens_results_wide_logreg_ni$accuracy_tt_m1)
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m1, ens_results_wide_logreg_ni$accuracy_tt_m1, alternative="less")
 
-```{r}
-t.test(ens_results_wide$accuracy_vt_m2, ens_results_wide$accuracy_tt_m2, alternative="less")
-```
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m2, ens_results_wide_logreg_ni$accuracy_tt_m2)
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m2, ens_results_wide_logreg_ni$accuracy_tt_m2, alternative="less")
 
-```{r}
-t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter)
-```
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m2_iter, ens_results_wide_logreg_ni$accuracy_tt_m2_iter)
+t.test(ens_results_wide_logreg_ni$accuracy_vt_m2_iter, ens_results_wide_logreg_ni$accuracy_tt_m2_iter, alternative="less")
 
-```{r}
-t.test(ens_results_wide$accuracy_vt_m2_iter, ens_results_wide$accuracy_tt_m2_iter, alternative="less")
+t.test(ens_results_wide_logreg_ni$accuracy_vt_bc, ens_results_wide_logreg_ni$accuracy_tt_bc)
+t.test(ens_results_wide_logreg_ni$accuracy_vt_bc, ens_results_wide_logreg_ni$accuracy_tt_bc, alternative="less")
 ```
-
-
-```{r}
-t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc)
-```
-
-```{r}
-t.test(ens_results_wide$accuracy_vt_bc, ens_results_wide$accuracy_tt_bc, alternative="less")
-```
-Outputs of each coupling method has statistically higher accuracy when LDA is trained on training set of neural networks.
+For all coupling methods, we found, that ensemble models trained on subset (of size 5000) of the neural networks training set have statistically significantly better accuracy than ensemble models trained on separate validation set (of the same size).
