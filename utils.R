@@ -54,7 +54,7 @@ load_network_outputs <- function(outputs_path, replications)
   return(output)
 }
 
-load_ensemble_outputs <- function(outputs_path, replications, folds=NULL)
+load_ensemble_outputs <- function(outputs_path, replications, folds=NULL, gather=NULL)
 {
   train_types <- c("train_training", "val_training")
   outputs_folder <- "comb_outputs"
@@ -107,6 +107,10 @@ load_ensemble_outputs <- function(outputs_path, replications, folds=NULL)
             file_name <- paste(outputs_match, "co_", co_m, "_cp_", cp_m, "_prec_", precision[1], ".npy", sep = "")
             output_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
             out_cp_m <- np$load(output_path)
+            if (!is.null(gather))
+            {
+              out_cp_m <- gather(data=out_cp_m, index=gather, index_dim=1, along=2)
+            }
           }
           else
           {
@@ -117,6 +121,10 @@ load_ensemble_outputs <- function(outputs_path, replications, folds=NULL)
               file_name <- paste("fold_", foldi, "_", outputs_match, "co_", co_m, "_cp_", cp_m, "_prec_", precision[1], ".npy", sep="")
               output_path <- file.path(outputs_path, repli, outputs_folder, t_type, file_name)
               out_fold <- np$load(output_path)
+              if (!is.null(gather))
+              {
+                out_fold <- gather(data=out_fold, index=gather, index_dim=1, along=2)
+              }
               dim(out_fold) <- c(1, dim(out_fold))
               outputs_list_fold[[li_fold]] <- out_fold
               li_fold <- li_fold + 1
