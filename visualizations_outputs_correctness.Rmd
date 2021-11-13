@@ -20,6 +20,7 @@ source("utils.R")
 ```
 
 Visualization on networks trained in 30 replications on CIFAR 10 training set with 500 sample validation set extracted randomly in each replication.
+This file visualizes correctness of outputs of networks and ensembles.
 
 ```{r}
 base_dir <- "../data/data_train_val_c10"
@@ -36,16 +37,17 @@ sort_ind <- function(lst)
   return(sort(lst, index.return=TRUE, decreasing=TRUE)$ix)
 }
 nets_test_top_indices <- apply(X=nets_outputs$test_outputs, MARGIN=c(1, 2, 3), FUN=sort_ind)[1, , , ]
-ens_tt_top_indices <- apply(X=ens_outputs$train_training, MARGIN=c(1, 2, 3), FUN=sort_ind)[1, , , ]
-ens_vt_top_indices <- apply(X=ens_outputs$val_training, MARGIN=c(1, 2, 3), FUN=sort_ind)[1, , , ]
+ens_tt_top_indices <- apply(X=ens_outputs$train_training, MARGIN=c(1, 2, 3, 4), FUN=sort_ind)[1, , , , ]
+ens_vt_top_indices <- apply(X=ens_outputs$val_training, MARGIN=c(1, 2, 3, 4), FUN=sort_ind)[1, , , , ]
 r_n <- length(repls)
 samples_n <- dim(nets_outputs$test_labels)[2]
 nets_n <- length(nets_outputs$networks)
-ens_n <- length(ens_outputs$methods)
+cp_m_n <- length(ens_outputs$coupling_methods)
+co_m_n <- length(ens_outputs$combining_methods)
 test_labs <- nets_outputs$test_labels + 1
 dim(test_labs) <- c(r_n, 1, samples_n)
 test_labs_nets <- aperm(abind(array(rep(aperm(test_labs, perm=c(2, 1, 3)), nets_n), c(r_n, samples_n, nets_n)), along=3), perm=c(1, 3, 2))
-test_labs_ens <- aperm(abind(array(rep(aperm(test_labs, perm=c(2, 1, 3)), ens_n), c(r_n, samples_n, ens_n)), along=3), perm=c(1, 3, 2))
+test_labs_ens <- aperm(array(rep(aperm(test_labs, perm=c(2, 1, 3)), co_m_n * cp_m_n), c(r_n, samples_n, co_m_n, cp_m_n)), perm=c(1, 3, 4, 2))
 nets_test_cor_preds <- test_labs_nets == nets_test_top_indices
 ens_tt_cor_preds <- test_labs_ens == ens_tt_top_indices
 ens_vt_cor_preds <- test_labs_ens == ens_vt_top_indices
@@ -64,28 +66,31 @@ for (ri in 1:r_n)
   }
   incor_n <- length(incor)
   
-  for (ei in 1:ens_n)
+  for (co_m_i in 1:co_m_n)
   {
-    cor_list_ens_tt <- which(ens_tt_cor_preds[ri, ei, ])
-    cor_list_ens_vt <- which(ens_vt_cor_preds[ri, ei, ])
-    
-    cur_cor_list_tt <- nets_cor_list
-    cur_cor_list_tt[[ens_outputs$methods[ei]]] = cor_list_ens_tt
-    
-    cur_cor_list_vt <- nets_cor_list
-    cur_cor_list_vt[[ens_outputs$methods[ei]]] = cor_list_ens_vt
-    
-    
-    venn_diag_tt <- ggVennDiagram(cur_cor_list_tt) + scale_fill_gradient(trans="log10", name="count", limits=c(1, 10000)) +
-    ggtitle(paste("tt - replication ", ri)) +
-      scale_x_continuous(limits=c(0, 1))
-    
-    venn_diag_vt <- ggVennDiagram(cur_cor_list_vt) + scale_fill_gradient(trans="log10", name="count", limits=c(1, 10000)) +
-    ggtitle(paste("vt - replication ", ri)) +
-      scale_x_continuous(limits=c(0, 1))
-    
-    print(venn_diag_tt)
-    print(venn_diag_vt)
+    for (cp_m_i in 1:cp_m_n)
+    {
+      cor_list_ens_tt <- which(ens_tt_cor_preds[ri, co_m_i, cp_m_i, ])
+      cor_list_ens_vt <- which(ens_vt_cor_preds[ri, co_m_i, cp_m_i, ])
+      
+      cur_cor_list_tt <- nets_cor_list
+      cur_cor_list_tt[[paste(ens_outputs$combining_methods[co_m_i], ens_outputs$coupling_methods[cp_m_i])]] = cor_list_ens_tt
+      
+      cur_cor_list_vt <- nets_cor_list
+      cur_cor_list_vt[[paste(ens_outputs$combining_methods[co_m_i], ens_outputs$coupling_methods[cp_m_i])]] = cor_list_ens_vt
+      
+      
+      venn_diag_tt <- ggVennDiagram(cur_cor_list_tt) + scale_fill_gradient(trans="log10", name="count", limits=c(1, 10000)) +
+      ggtitle(paste("tt - replication ", ri)) +
+        scale_x_continuous(limits=c(0, 1))
+      
+      venn_diag_vt <- ggVennDiagram(cur_cor_list_vt) + scale_fill_gradient(trans="log10", name="count", limits=c(1, 10000)) +
+      ggtitle(paste("vt - replication ", ri)) +
+        scale_x_continuous(limits=c(0, 1))
+      
+      print(venn_diag_tt)
+      print(venn_diag_vt)
+    }
   }
 }
 ```

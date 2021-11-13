@@ -1,0 +1,188 @@
+---
+title: "Visualizations combiner coefficients"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library("ggpubr")
+library(LDATS)
+library(ggVennDiagram)
+library(stringr)
+library(abind)
+library(patchwork)
+
+source("utils.R")
+```
+Visualizations on three sets of networks. First set consists of networks trained in 30 replications on CIFAR 10 training set with 500 sample validation set extracted randomly in each replication. Second set consists of networks trained in a single replication on half of CIFAR 10 training set. Third set are networks trained in 10 replications on half of CIFAR 100 training set.
+
+
+## CIFAR 10
+
+```{r}
+base_dir <- "../data/data_train_val_c10"
+repls <- 0:29
+classes <- 10
+combiner_coefs <- load_combiner_coefs(base_dir, repls)
+net_pw_results <- read.csv(file.path(base_dir, "net_pw_accuracies.csv"))
+ens_pw_results <- read.csv(file.path(base_dir, "ensemble_pw_accuracies.csv"))
+ens_pw_cal <- read.csv(file.path(base_dir, "ensemble_pw_calibration.csv"))
+ens_pw_irrel <- read.csv(file.path(base_dir, "ensemble_pw_irrelevant.csv"))
+net_pw_results[, c("class1", "class2")] <- lapply(net_pw_results[, c("class1", "class2")], as.factor)
+ens_pw_results[, c("class1", "class2", "combining_method")] <- lapply(ens_pw_results[, c("class1", "class2", "combining_method")], as.factor)
+ens_pw_cal$bin_c <- (ens_pw_cal$conf_min + ens_pw_cal$conf_max) / 2
+ens_pw_cal[, c("class1", "class2", "bin_c", "combining_method")] <- lapply(ens_pw_cal[, c("class1", "class2", "bin_c", "combining_method")], as.factor)
+ens_pw_irrel[, c("class1", "class2", "combining_method")] <- lapply(ens_pw_irrel[, c("class1", "class2", "combining_method")], as.factor)
+
+```
+
+```{r, fig.width=10, fig.height=16}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    combiner_plt <- combiner_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_grid(cols=vars(train_type), rows=vars(combining_method)) + ggtitle("combiner coefficients")
+    
+    acc_plt_net <- net_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(x=network, y=accuracy)) + 
+      geom_boxplot() + ggtitle("Pairwise accuracies of networks")
+    
+    acc_plt_ens <- ens_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(y=accuracy)) +
+      geom_boxplot() + facet_grid(cols=vars(train_set), rows=vars(combining_method)) + ggtitle("Pairwise accuracies of combiner output") +
+      theme(axis.ticks.x=element_blank(), axis.text.x=element_blank())
+    
+    
+    print((acc_plt_net/combiner_plt/acc_plt_ens) + plot_annotation(title=paste("Classes ", cl1, " vs ", cl2)))
+  }
+}
+```
+Val training accuracies have higher variance.
+
+
+An attempt to visualize calibration of LDAs. Almost all elements are present near the zero and one probabilities, therefore the visualization is not very informative.
+```{r}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    cal_count_plt <- ens_pw_cal %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot() +
+      geom_boxplot(mapping=aes(x=bin_c, y=bin_count)) + facet_grid(cols=vars(train_set), rows=vars(combining_method)) +
+      ggtitle(paste("Classes ", cl1, " vs ", cl2)) + xlab("Confidence") + ylab("Count")
+    
+    print(cal_count_plt)
+  }
+}
+```
+
+
+```{r}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    cal_plt <- ens_pw_cal %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot() +
+      geom_boxplot(mapping=aes(x=bin_c, y=bin_accuracy)) + facet_grid(cols=vars(train_set), rows=vars(combining_method)) +
+      ggtitle(paste("Classes ", cl1, " vs ", cl2)) + xlab("Confidence") + ylab("Accuracy")
+    
+    print(cal_plt)
+  }
+}
+```
+Even with low bin counts, better calibration can be observed for logreg than for lda.
+
+```{r}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    irrel_plt <- ens_pw_irrel %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot() +
+      geom_histogram(mapping=aes(x=pred1), bins=30) + facet_grid(cols=vars(train_set), rows=vars(combining_method)) +
+      ggtitle(paste("Predictions for irrelevant classes by combiner method ", cl1, " vs ", cl2)) +
+      xlab("Predicted probability")
+    
+    print(irrel_plt)
+  }
+}
+```
+These histograms show, that even for unknown classes, LDA most often produces probabilities close to one and zero. One exception is val_train LDA for class pair 4 and 6, where probabilities are divided evenly. Also the confidence plot for this LDA looks sensibly.
+Histograms for method logreg, on the other hand produce more evenly distributed probabilities.
+
+
+## CIFAR 10 half
+
+```{r}
+base_dir <- "../data/data_train_val_half_c10"
+repls <- 0:0
+folds <- 0:49
+classes <- 10
+combiner_coefs <- load_combiner_coefs(base_dir, repls, folds)
+net_pw_results <- read.csv(file.path(base_dir, "net_pw_accuracies.csv"))
+ens_pw_results <- read.csv(file.path(base_dir, "ensemble_pw_accuracies.csv"))
+net_pw_results[, c("class1", "class2")] <- lapply(net_pw_results[, c("class1", "class2")], as.factor)
+ens_pw_results[, c("class1", "class2", "combining_method")] <- lapply(ens_pw_results[, c("class1", "class2", "combining_method")], as.factor)
+```
+
+```{r, fig.width=10, fig.height=16}
+for (cl1 in 1:(classes - 1))
+{
+  for (cl2 in (cl1 + 1):classes)
+  {
+    combiner_plt <- combiner_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + 
+      geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_grid(cols=vars(train_type), rows=vars(combining_method)) + ggtitle("combiner coefficients")
+    
+    acc_plt_net <- net_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(x=network, y=accuracy)) + 
+      geom_boxplot() + ggtitle("Pairwise accuracies of networks")
+    
+    acc_plt_ens <- ens_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(y=accuracy)) +
+      geom_boxplot() + facet_grid(cols=vars(train_set), rows=vars(combining_method)) + ggtitle("Pairwise accuracies of combiner output") +
+      theme(axis.ticks.x=element_blank(), axis.text.x=element_blank())
+    
+    
+    print((acc_plt_net/combiner_plt/acc_plt_ens) + plot_annotation(title=paste("Classes ", cl1, " vs ", cl2)))
+  }
+}
+```
+Val training accuracies have higher variance.
+
+## CIFAR 100 half
+
+```{r}
+base_dir <- "../data/data_train_val_half_c100"
+repls <- 0:9
+folds <- 0:4
+disp_classes <- 10
+combiner_coefs <- load_combiner_coefs(base_dir, repls, folds)
+net_pw_results <- read.csv(file.path(base_dir, "net_pw_accuracies.csv"))
+ens_pw_results <- read.csv(file.path(base_dir, "ensemble_pw_accuracies.csv"))
+net_pw_results[, c("class1", "class2")] <- lapply(net_pw_results[, c("class1", "class2")], as.factor)
+ens_pw_results[, c("class1", "class2", "combining_method")] <- lapply(ens_pw_results[, c("class1", "class2", "combining_method")], as.factor)
+```
+
+```{r, fig.width=10, fig.height=16}
+for (cl1 in 1:(disp_classes - 1))
+{
+  for (cl2 in (cl1 + 1):disp_classes)
+  {
+    combiner_plt <- combiner_coefs %>% filter(class1 == cl1 & class2 == cl2) %>% ggplot() + geom_boxplot(aes(x=coefficient, y=value)) +
+      facet_grid(cols=vars(train_type), rows=vars(combining_method)) + ggtitle("Combiner coefficients")
+    
+    acc_plt_net <- net_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(x=network, y=accuracy)) + 
+      geom_boxplot() + ggtitle("Pairwise accuracies of networks")
+    
+    acc_plt_ens <- ens_pw_results %>% filter(class1 == (cl1 - 1) & class2 == (cl2 - 1)) %>% ggplot(mapping=aes(y=accuracy)) +
+      geom_boxplot() + facet_grid(cols=vars(train_set), rows=vars(combining_method)) + 
+      ggtitle("Pairwise accuracies of combiner output") +
+      theme(axis.ticks.x=element_blank(), axis.text.x=element_blank())
+    
+    
+    print((acc_plt_net/combiner_plt/acc_plt_ens) + plot_annotation(title=paste("Classes ", cl1, " vs ", cl2)))
+  }
+}
+```
+
+Here are too many class pair combinations to draw them all. TODO: think of some criteria to draw interesting ones. 
