@@ -1,5 +1,5 @@
 ---
-title: "LDA training on random subsets of different sizes"
+title: "Linear combiner training on random subsets of different sizes"
 output:
   pdf_document: default
   html_notebook: default
