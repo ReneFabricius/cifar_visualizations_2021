@@ -1,0 +1,104 @@
+---
+title: "Comparison of ensembling methods"
+output:
+  pdf_document: default
+  html_notebook: default
+bibliography: references.bib
+---
+Working comparison of ensembling methods on networks trained on half of CIFAR100 train set.
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+base_dir <- "D:\\skola\\1\\weighted_ensembles\\tests\\test_cifar_2021\\data\\data_train_val_half_c100"
+net_metrics <- read.csv(file.path(base_dir, "net_accuracies.csv"))
+cp_ens_metrics <- read.csv(file.path(base_dir, "ensemble_accuracies.csv"))
+cal_ens_metrics <- read.csv(file.path(
+    base_dir, "0", 
+    "exp_subsets_sizes_calibration_outputs", "ens_metrics_val.csv"))
+```
+
+```{r, fig.width=10}
+acc_plot <- ggplot() +
+            geom_hline(data=net_metrics %>% filter(repli == 0),
+                       mapping=aes(yintercept=accuracy, color=network)) +
+            geom_boxplot(data=cp_ens_metrics %>% filter(repli == 0 & train_set == "tt"),
+                         mapping=aes(x=coupling_method, y=accuracy)) +
+            geom_boxplot(data=cal_ens_metrics %>% filter(train_size > 4000),
+                         mapping=aes(x=calibrating_method, y=accuracy)) +
+            facet_wrap(~combining_method)
+
+acc_plot
+```
+
+```{r}
+cp_e <- cp_ens_metrics %>% filter(repli == 0 & 
+                                  train_set == "tt" &
+                                  combining_method == "logreg_no_interc" &
+                                  coupling_method == "bc") %>% 
+                           select(fold, accuracy) %>%
+                           mutate(ens="LWEnsemble")
+cal_e <- cal_ens_metrics %>% filter(train_size > 4000) %>%
+                             select(accuracy) %>%
+                             mutate(ens="CalibratedCombination", fold=0)
+ncal_e <- cal_ens_metrics %>% filter(calibrating_method == "NoCalibration") %>%
+                              select(accuracy) %>%
+                              mutate(ens="UncalibratedCombination", fold=0)
+
+disp_ens <- bind_rows(cp_e, cal_e, ncal_e)
+
+
+acc_plot <- ggplot() +
+            geom_hline(data=net_metrics %>% filter(repli == 0),
+                       mapping=aes(yintercept=accuracy, color=network)) +
+            geom_boxplot(data=disp_ens,
+                         mapping=aes(x=factor(ens, levels=c("UncalibratedCombination", "CalibratedCombination", "LWEnsemble")), y=accuracy))+
+            ggtitle("Ensemble accuracy comparison\nCIFAR 100") +
+            xlab("Ensembling method") +
+            scale_color_discrete(name="ensembled networks") +
+            theme_classic()
+
+# ggsave("acc_plot.svg", acc_plot, width=7, height=3)
+acc_plot
+
+```
+
+```{r}
+base_dir <- "D:\\skola\\1\\weighted_ensembles\\tests\\test_cifar_2021\\data\\data_train_val_half_c10"
+net_metrics <- read.csv(file.path(base_dir, "net_accuracies.csv"))
+cp_ens_metrics <- read.csv(file.path(base_dir, "ensemble_accuracies.csv"))
+cal_ens_metrics <- read.csv(file.path(
+    base_dir, "0", 
+    "exp_subsets_sizes_calibration_outputs", "ens_metrics_val.csv"))
+```
+
+```{r, fig.width=10}
+acc_plot <- ggplot() +
+            geom_hline(data=net_metrics %>% filter(repli == 0),
+                       mapping=aes(yintercept=accuracy, color=network)) +
+            geom_boxplot(data=cp_ens_metrics %>% filter(repli == 0 & train_set == "tt"),
+                         mapping=aes(x=coupling_method, y=accuracy)) +
+            geom_boxplot(data=cal_ens_metrics %>% filter(train_size > 4000),
+                         mapping=aes(x=calibrating_method, y=accuracy)) +
+            facet_wrap(~combining_method)
+
+acc_plot
+```
+
+```{r}
+acc_plot <- ggplot() +
+            geom_hline(data=net_metrics %>% filter(repli == 0),
+                       mapping=aes(yintercept=accuracy, color=network)) +
+            geom_boxplot(data=cp_ens_metrics %>% filter(repli == 0 & 
+                                                        train_set == "tt" &
+                                                        combining_method == "logreg_no_interc" &
+                                                        coupling_method == "bc"),
+                         mapping=aes(x=coupling_method, y=accuracy)) +
+            geom_boxplot(data=cal_ens_metrics %>% filter(train_size > 4000),
+                         mapping=aes(x=calibrating_method, y=accuracy)) 
+
+acc_plot
+```
+
