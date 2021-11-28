@@ -20,13 +20,23 @@ The goal of the experiment is to determine the best calibration subset size.
 
 ```{r}
 base_dir_tc <- "../data/data_train_val_half_c10/0/exp_subsets_sizes_calibration_outputs/" # nolint
-metrics_ens_tc <- read.csv(file.path(base_dir_tc, "ens_metrics_train.csv"), stringsAsFactors = TRUE)
-metrics_net_tc <- read.csv(file.path(base_dir_tc, "net_metrics_train.csv"), stringsAsFactors = TRUE)
-metrics_net_cal_tc <- read.csv(file.path(base_dir_tc, "net_cal_metrics_train.csv"))
+metrics_ens_tc <- read.csv(
+  file.path(base_dir_tc, "ens_metrics_train.csv"),
+  stringsAsFactors = TRUE)
+metrics_net_tc <- read.csv(
+  file.path(base_dir_tc, "net_metrics_train.csv"),
+  stringsAsFactors = TRUE)
+metrics_net_cal_tc <- read.csv(
+  file.path(base_dir_tc, "net_cal_metrics_train.csv"))
 
-metrics_ens_vc <- read.csv(file.path(base_dir_tc, "ens_metrics_val.csv"), stringsAsFactors = TRUE)
-metrics_net_vc <- read.csv(file.path(base_dir_tc, "net_metrics_val.csv"), stringsAsFactors = TRUE)
-metrics_net_cal_vc <- read.csv(file.path(base_dir_tc, "net_cal_metrics_val.csv"))
+metrics_ens_vc <- read.csv(
+  file.path(base_dir_tc, "ens_metrics_val.csv"),
+  stringsAsFactors = TRUE)
+metrics_net_vc <- read.csv(
+  file.path(base_dir_tc, "net_metrics_val.csv"),
+  stringsAsFactors = TRUE)
+metrics_net_cal_vc <- read.csv(
+  file.path(base_dir_tc, "net_cal_metrics_val.csv"))
 
 metrics_ens_tc$cal_type <- "tc"
 metrics_net_tc$cal_type <- "tc"
@@ -48,10 +58,12 @@ net_calibrations_ece <- ggplot() +
     mapping = aes(y = ece, color = network)
   ) +
   geom_hline(
-    data = metrics_net %>% filter(cal_type == "tc"), 
+    data = metrics_net %>% filter(cal_type == "tc"),
     mapping = aes(yintercept = ece, color = network)) +
   facet_wrap(~train_size) +
-  ggtitle("Relation between estimated calibration errors and calibration set size. train-cal")
+  ggtitle(paste(
+    "Relation between estimated calibration errors ",
+    "and calibration set size.\ntrain-cal", sep=""))
 net_calibrations_ece
 ```
 As we can see, calibration on training data worsens the estimated calibration error of the networks.
@@ -64,10 +76,10 @@ net_calibrations_nll <- ggplot() +
     mapping = aes(y = nll, color = network)
   ) +
   geom_hline(
-    data = metrics_net %>% filter(cal_type == "tc"), 
+    data = metrics_net %>% filter(cal_type == "tc"),
     mapping = aes(yintercept = nll, color = network)) +
   facet_wrap(~train_size) +
-  ggtitle("Relation between NLL and calibration set size. train-cal")
+  ggtitle("Relation between NLL and calibration set size.\ntrain-cal")
 net_calibrations_nll
 ```
 Calibration on training data also worsens the negative log likelihood.
@@ -75,7 +87,8 @@ Calibration on training data also worsens the negative log likelihood.
 ```{r}
 ens_accuracy <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration" &
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
       cal_type == "tc")),
     mapping = aes(y = accuracy, color = "Temperature scaling")
   ) +
@@ -88,7 +101,7 @@ ens_accuracy <- ggplot() +
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble accuracy and calibration set size. train-cal")
+  ggtitle("Relation of ensemble accuracy and calibration set size.\ntrain-cal")
 ens_accuracy
 ```
 Calibration on train data worsens the ensemble accuracy.
@@ -97,18 +110,21 @@ Calibration on train data worsens the ensemble accuracy.
 ```{r}
 ens_nll <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data=(metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="tc")),
     mapping = aes(y = nll, color = "Temperature scaling")
   ) +
   geom_hline(
     data = (metrics_ens %>% filter(
-      calibrating_method == "NoCalibration") %>%
+      calibrating_method == "NoCalibration" &
+      cal_type=="tc") %>%
       select(!train_size)),
     mapping = aes(yintercept = nll, color = "No calibration")
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble nll and calibration set size. train-cal")
+  ggtitle("Relation of ensemble nll and calibration set size.\ntrain-cal")
 ens_nll
 ```
 Calibration on train data worsens the ensemble nll.
@@ -117,18 +133,21 @@ Calibration on train data worsens the ensemble nll.
 ```{r}
 ens_ece <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="tc")),
     mapping = aes(y = ece, color = "Temperature scaling")
   ) +
   geom_hline(
     data = (metrics_ens %>% filter(
-      calibrating_method == "NoCalibration") %>%
+      calibrating_method == "NoCalibration" &
+      cal_type=="tc") %>%
       select(!train_size)),
     mapping = aes(yintercept = ece, color = "No calibration")
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble ece and calibration set size. train-cal")
+  ggtitle("Relation of ensemble ece and calibration set size.\ntrain-cal")
 ens_ece
 ```
 Calibration on train data worsens the ensemble estimated calibration error.
@@ -136,7 +155,9 @@ Calibration on train data worsens the ensemble estimated calibration error.
 ```{r}
 ens_accuracy <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="tc")),
     mapping = aes(y = accuracy)
   ) +
   geom_hline(
@@ -144,7 +165,7 @@ ens_accuracy <- ggplot() +
     mapping = aes(yintercept = accuracy, color = network)
   ) +
   facet_wrap(~train_size) +
-  ggtitle("Comparison of ensemble and networks accuracy. train-cal")
+  ggtitle("Comparison of ensemble and networks accuracy.\ntrain-cal")
 ens_accuracy
 ```
 
@@ -160,7 +181,9 @@ net_calibrations_ece <- ggplot() +
     data = metrics_net %>% filter(cal_type == "vc"), 
     mapping = aes(yintercept = ece, color = network)) +
   facet_wrap(~train_size) +
-  ggtitle("Relation between estimated calibration errors and calibration set size. val-cal")
+  ggtitle(paste(
+    "Relation between estimated calibration errors ",
+    "and calibration set size.\nval-cal", sep=""))
 net_calibrations_ece
 ```
 Calibration on validation data improves estimated calibration error for networks on testing data.
@@ -173,10 +196,10 @@ net_calibrations_nll <- ggplot() +
     mapping = aes(y = nll, color = network)
   ) +
   geom_hline(
-    data = metrics_net %>% filter(cal_type == "vc"), 
+    data = metrics_net %>% filter(cal_type == "vc"),
     mapping = aes(yintercept = nll, color = network)) +
   facet_wrap(~train_size) +
-  ggtitle("Relation between NLL and calibration set size. val-cal")
+  ggtitle("Relation between NLL and calibration set size.\nval-cal")
 net_calibrations_nll
 ```
 Calibration on validation data improves nll for networks on test set.
@@ -184,7 +207,8 @@ Calibration on validation data improves nll for networks on test set.
 ```{r}
 ens_accuracy <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration" &
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
       cal_type == "vc")),
     mapping = aes(y = accuracy, color = "Temperature scaling")
   ) +
@@ -197,7 +221,7 @@ ens_accuracy <- ggplot() +
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble accuracy and calibration set size. val-cal")
+  ggtitle("Relation of ensemble accuracy and calibration set size.\nval-cal")
 ens_accuracy
 ```
 Calibration on validation data doesn't have large impact on ensemble accuracy.
@@ -206,18 +230,21 @@ Calibration on validation data doesn't have large impact on ensemble accuracy.
 ```{r}
 ens_nll <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="vc")),
     mapping = aes(y = nll, color = "Temperature scaling")
   ) +
   geom_hline(
     data = (metrics_ens %>% filter(
-      calibrating_method == "NoCalibration") %>%
+      calibrating_method == "NoCalibration" &
+      cal_type=="vc") %>%
       select(!train_size)),
     mapping = aes(yintercept = nll, color = "No calibration")
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble nll and calibration set size. val-cal")
+  ggtitle("Relation of ensemble nll and calibration set size.\nval-cal")
 ens_nll
 ```
 Calibration on validation data worsens the ensemble nll.
@@ -226,18 +253,21 @@ Calibration on validation data worsens the ensemble nll.
 ```{r}
 ens_ece <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="vc")),
     mapping = aes(y = ece, color = "Temperature scaling")
   ) +
   geom_hline(
     data = (metrics_ens %>% filter(
-      calibrating_method == "NoCalibration") %>%
+      calibrating_method == "NoCalibration" &
+      cal_type=="vc") %>%
       select(!train_size)),
     mapping = aes(yintercept = ece, color = "No calibration")
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble ece and calibration set size. val-cal")
+  ggtitle("Relation of ensemble ece and calibration set size.\nval-cal")
 ens_ece
 ```
 Calibration on validation data worsens the ensemble estimated calibration error.
@@ -245,7 +275,9 @@ Calibration on validation data worsens the ensemble estimated calibration error.
 ```{r}
 ens_accuracy <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="vc")),
     mapping = aes(y = accuracy)
   ) +
   geom_hline(
@@ -253,7 +285,9 @@ ens_accuracy <- ggplot() +
     mapping = aes(yintercept = accuracy, color = network)
   ) +
   facet_wrap(~train_size) +
-  ggtitle("Comparison of ensemble without calibration \n and networks accuracy.")
+  ggtitle(paste(
+    "Comparison of ensemble without calibration",
+    "and networks accuracy.\nval-cal", sep=""))
 ens_accuracy
 ```
 
@@ -261,13 +295,23 @@ ens_accuracy
 
 ```{r}
 base_dir_tc <- "../data/data_train_val_half_c100/0/exp_subsets_sizes_calibration_outputs/" # nolint
-metrics_ens_tc <- read.csv(file.path(base_dir_tc, "ens_metrics_train.csv"), stringsAsFactors = TRUE)
-metrics_net_tc <- read.csv(file.path(base_dir_tc, "net_metrics_train.csv"), stringsAsFactors = TRUE)
-metrics_net_cal_tc <- read.csv(file.path(base_dir_tc, "net_cal_metrics_train.csv"))
+metrics_ens_tc <- read.csv(
+  file.path(base_dir_tc, "ens_metrics_train.csv"),
+  stringsAsFactors = TRUE)
+metrics_net_tc <- read.csv(
+  file.path(base_dir_tc, "net_metrics_train.csv"),
+  stringsAsFactors = TRUE)
+metrics_net_cal_tc <- read.csv(
+  file.path(base_dir_tc, "net_cal_metrics_train.csv"))
 
-metrics_ens_vc <- read.csv(file.path(base_dir_tc, "ens_metrics_val.csv"), stringsAsFactors = TRUE)
-metrics_net_vc <- read.csv(file.path(base_dir_tc, "net_metrics_val.csv"), stringsAsFactors = TRUE)
-metrics_net_cal_vc <- read.csv(file.path(base_dir_tc, "net_cal_metrics_val.csv"))
+metrics_ens_vc <- read.csv(
+  file.path(base_dir_tc, "ens_metrics_val.csv"),
+  stringsAsFactors = TRUE)
+metrics_net_vc <- read.csv(
+  file.path(base_dir_tc, "net_metrics_val.csv"),
+  stringsAsFactors = TRUE)
+metrics_net_cal_vc <- read.csv(
+  file.path(base_dir_tc, "net_cal_metrics_val.csv"))
 
 metrics_ens_tc$cal_type <- "tc"
 metrics_net_tc$cal_type <- "tc"
@@ -289,10 +333,12 @@ net_calibrations_ece <- ggplot() +
     mapping = aes(y = ece, color = network)
   ) +
   geom_hline(
-    data = metrics_net %>% filter(cal_type == "tc"), 
+    data = metrics_net %>% filter(cal_type == "tc"),
     mapping = aes(yintercept = ece, color = network)) +
   facet_wrap(~train_size) +
-  ggtitle("Relation between estimated calibration errors and calibration set size. train-cal")
+  ggtitle(paste(
+    "Relation between estimated calibration errors ",
+    "and calibration set size.\ntrain-cal", sep=''))
 net_calibrations_ece
 ```
 As we can see, calibration on training data worsens the estimated calibration error of the networks.
@@ -305,10 +351,10 @@ net_calibrations_nll <- ggplot() +
     mapping = aes(y = nll, color = network)
   ) +
   geom_hline(
-    data = metrics_net %>% filter(cal_type == "tc"), 
+    data = metrics_net %>% filter(cal_type == "tc"),
     mapping = aes(yintercept = nll, color = network)) +
   facet_wrap(~train_size) +
-  ggtitle("Relation between NLL and calibration set size. train-cal")
+  ggtitle("Relation between NLL and calibration set size.\ntrain-cal")
 net_calibrations_nll
 ```
 Calibration on training data also worsens the negative log likelihood.
@@ -316,7 +362,8 @@ Calibration on training data also worsens the negative log likelihood.
 ```{r}
 ens_accuracy <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration" &
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
       cal_type == "tc")),
     mapping = aes(y = accuracy, color = "Temperature scaling")
   ) +
@@ -329,7 +376,7 @@ ens_accuracy <- ggplot() +
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble accuracy and calibration set size. train-cal")
+  ggtitle("Relation of ensemble accuracy and calibration set size.\ntrain-cal")
 ens_accuracy
 ```
 Calibration on train data worsens the ensemble accuracy.
@@ -338,18 +385,21 @@ Calibration on train data worsens the ensemble accuracy.
 ```{r}
 ens_nll <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="tc")),
     mapping = aes(y = nll, color = "Temperature scaling")
   ) +
   geom_hline(
     data = (metrics_ens %>% filter(
-      calibrating_method == "NoCalibration") %>%
+      calibrating_method == "NoCalibration" &
+      cal_type=="tc") %>%
       select(!train_size)),
     mapping = aes(yintercept = nll, color = "No calibration")
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble nll and calibration set size. train-cal")
+  ggtitle("Relation of ensemble nll and calibration set size.\ntrain-cal")
 ens_nll
 ```
 Calibration on train data worsens the ensemble nll.
@@ -358,18 +408,21 @@ Calibration on train data worsens the ensemble nll.
 ```{r}
 ens_ece <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="tc")),
     mapping = aes(y = ece, color = "Temperature scaling")
   ) +
   geom_hline(
     data = (metrics_ens %>% filter(
-      calibrating_method == "NoCalibration") %>%
+      calibrating_method == "NoCalibration" &
+      cal_type=="tc") %>%
       select(!train_size)),
     mapping = aes(yintercept = ece, color = "No calibration")
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble ece and calibration set size. train-cal")
+  ggtitle("Relation of ensemble ece and calibration set size.\ntrain-cal")
 ens_ece
 ```
 Calibration on train data worsens the ensemble estimated calibration error.
@@ -377,7 +430,9 @@ Calibration on train data worsens the ensemble estimated calibration error.
 ```{r}
 ens_accuracy <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="tc")),
     mapping = aes(y = accuracy)
   ) +
   geom_hline(
@@ -385,7 +440,7 @@ ens_accuracy <- ggplot() +
     mapping = aes(yintercept = accuracy, color = network)
   ) +
   facet_wrap(~train_size) +
-  ggtitle("Comparison of ensemble and networks accuracy. train-cal")
+  ggtitle("Comparison of ensemble and networks accuracy.\ntrain-cal")
 ens_accuracy
 ```
 
@@ -398,10 +453,12 @@ net_calibrations_ece <- ggplot() +
     mapping = aes(y = ece, color = network)
   ) +
   geom_hline(
-    data = metrics_net %>% filter(cal_type == "vc"), 
+    data = metrics_net %>% filter(cal_type == "vc"),
     mapping = aes(yintercept = ece, color = network)) +
   facet_wrap(~train_size) +
-  ggtitle("Relation between estimated calibration errors and calibration set size. val-cal")
+  ggtitle(paste(
+    "Relation between estimated calibration errors ",
+    "and calibration set size.\nval-cal", sep=''))
 net_calibrations_ece
 ```
 Calibration on validation data improves estimated calibration error for networks on testing data.
@@ -414,10 +471,10 @@ net_calibrations_nll <- ggplot() +
     mapping = aes(y = nll, color = network)
   ) +
   geom_hline(
-    data = metrics_net %>% filter(cal_type == "vc"), 
+    data = metrics_net %>% filter(cal_type == "vc"),
     mapping = aes(yintercept = nll, color = network)) +
   facet_wrap(~train_size) +
-  ggtitle("Relation between NLL and calibration set size. val-cal")
+  ggtitle("Relation between NLL and calibration set size.\nval-cal")
 net_calibrations_nll
 ```
 Calibration on validation data improves nll for networks on test set.
@@ -425,7 +482,8 @@ Calibration on validation data improves nll for networks on test set.
 ```{r}
 ens_accuracy <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration" &
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
       cal_type == "vc")),
     mapping = aes(y = accuracy, color = "Temperature scaling")
   ) +
@@ -438,7 +496,7 @@ ens_accuracy <- ggplot() +
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble accuracy and calibration set size. val-cal")
+  ggtitle("Relation of ensemble accuracy and calibration set size.\nval-cal")
 ens_accuracy
 ```
 Calibration on validation data improves ensemble accuracy.
@@ -447,18 +505,21 @@ Calibration on validation data improves ensemble accuracy.
 ```{r}
 ens_nll <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="vc")),
     mapping = aes(y = nll, color = "Temperature scaling")
   ) +
   geom_hline(
     data = (metrics_ens %>% filter(
-      calibrating_method == "NoCalibration") %>%
+      calibrating_method == "NoCalibration" &
+      cal_type=="vc") %>%
       select(!train_size)),
     mapping = aes(yintercept = nll, color = "No calibration")
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble nll and calibration set size. val-cal")
+  ggtitle("Relation of ensemble nll and calibration set size.\nval-cal")
 ens_nll
 ```
 Calibration on validation data doesn't have large effect on the ensemble nll.
@@ -467,18 +528,21 @@ Calibration on validation data doesn't have large effect on the ensemble nll.
 ```{r}
 ens_ece <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="vc")),
     mapping = aes(y = ece, color = "Temperature scaling")
   ) +
   geom_hline(
     data = (metrics_ens %>% filter(
-      calibrating_method == "NoCalibration") %>%
+      calibrating_method == "NoCalibration" &
+      cal_type=="vc") %>%
       select(!train_size)),
     mapping = aes(yintercept = ece, color = "No calibration")
   ) +
   facet_wrap(~train_size) +
   guides(color = guide_legend(title = "Calibration method")) +
-  ggtitle("Relation of ensemble ece and calibration set size. val-cal")
+  ggtitle("Relation of ensemble ece and calibration set size.\nval-cal")
 ens_ece
 ```
 Calibration on validation data worsens the ensemble estimated calibration error.
@@ -486,7 +550,9 @@ Calibration on validation data worsens the ensemble estimated calibration error.
 ```{r}
 ens_accuracy <- ggplot() +
   geom_boxplot(
-    data = (metrics_ens %>% filter(calibrating_method != "NoCalibration")),
+    data = (metrics_ens %>% filter(
+      calibrating_method != "NoCalibration" &
+      cal_type=="vc")),
     mapping = aes(y = accuracy)
   ) +
   geom_hline(
@@ -494,6 +560,8 @@ ens_accuracy <- ggplot() +
     mapping = aes(yintercept = accuracy, color = network)
   ) +
   facet_wrap(~train_size) +
-  ggtitle("Comparison of ensemble without calibration \n and networks accuracy.")
+  ggtitle(paste(
+    "Comparison of ensemble without calibration ",
+    "and networks accuracy.\nval-cal", sep=""))
 ens_accuracy
 ```

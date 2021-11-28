@@ -24,7 +24,9 @@ cal_ens_metrics <- read.csv(file.path(
 acc_plot <- ggplot() +
             geom_hline(data=net_metrics %>% filter(repli == 0),
                        mapping=aes(yintercept=accuracy, color=network)) +
-            geom_boxplot(data=cp_ens_metrics %>% filter(repli == 0 & train_set == "tt"),
+            geom_boxplot(data=cp_ens_metrics %>% filter(
+              repli == 0 & 
+              train_set == "tt"),
                          mapping=aes(x=coupling_method, y=accuracy)) +
             geom_boxplot(data=cal_ens_metrics %>% filter(train_size > 4000),
                          mapping=aes(x=calibrating_method, y=accuracy)) +
