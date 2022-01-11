@@ -3,6 +3,8 @@ title: "WeightedLinearEnsemble evaluation new"
 output:
   pdf_document: default
   html_notebook: default
+header-includes:
+   - \usepackage{longtable}
 bibliography: references.bib
 ---
 
@@ -15,10 +17,15 @@ library(stringr)
 library(ungeviz)
 library(relayer)
 library(patchwork)
+library(xtable)
 ```
 
 
 ```{r}
+my_plot_hook <- function(x, options)
+  paste("\n", knitr::hook_plot_tex(x, options), "\n")
+knitr::knit_hooks$set(plot = my_plot_hook)
+
 base_dir <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/new"
 net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
 ens_df_cal <- read.csv(file.path(base_dir, "ens_cal_metrics.csv"))
@@ -321,53 +328,105 @@ for (sss in unique(ens_cal_plt_df$combination_size))
         the %s of networks vs %s.
         Ensemble size %s",
           if (ya == "acc_imp_max") "best" else "average", xa, sss
-        ))
+        )) +
+        theme(strip.text.y = element_text(size = 8, angle = 0))
 
       print(cur_plot)
     }
   }
 }
 ```
-
+```{r}
+avg_imp_table <- rbind(
+  ens_pwc_plt_df %>%
+    mutate(method = paste(combining_method, coupling_method, sep=" ")) %>%
+    group_by(method) %>%
+    summarise(imp_o_avg = mean(acc_imp_avg), imp_o_max = mean(acc_imp_max)),
+  ens_cal_plt_df %>%
+    mutate(method = paste0("average of ", calibrating_method)) %>%
+    group_by(method) %>%
+    summarise(imp_o_avg = mean(acc_imp_avg), imp_o_max = mean(acc_imp_max))
+)
+```
 ```{r, fig.width=9, fig.height=20}
 imp_avg_plot <- ggplot() +
-  geom_boxplot(data = ens_pwc_plt_df %>% filter(coupling_method != "sbt"), mapping = aes(x = coupling_method, y = acc_imp_avg)) +
+  geom_boxplot(data = ens_pwc_plt_df, mapping = aes(x = coupling_method, y = acc_imp_avg)) +
   geom_boxplot(data = ens_cal_plt_df, mapping = aes(x = calibrating_method, y = acc_imp_avg)) +
   facet_grid(rows = vars(combining_method)) +
-  ggtitle("Accuracy improvement over the average of networks")
+  ggtitle("Accuracy improvement over the average of networks") +
+  theme(strip.text.y = element_text(size = 8, angle = 0))
+
 
 print(imp_avg_plot)
 ```
 
+```{r, results='asis'}
+print(xtable(avg_imp_table %>% arrange(desc(imp_o_avg)), digits=c(0, 0, 4, 4)), tabular.environment="longtable", floating=FALSE)
+```
+
 ```{r, fig.width=9, fig.height=20}
 imp_max_plot <- ggplot() +
-  geom_boxplot(data = ens_pwc_plt_df %>% filter(coupling_method != "sbt"), mapping = aes(x = coupling_method, y = acc_imp_max)) +
+  geom_boxplot(data = ens_pwc_plt_df, mapping = aes(x = coupling_method, y = acc_imp_max)) +
   geom_boxplot(data = ens_cal_plt_df, mapping = aes(x = calibrating_method, y = acc_imp_max)) +
   facet_grid(rows = vars(combining_method)) +
-  ggtitle("Accuracy improvement over the best network")
+  ggtitle("Accuracy improvement over the best network") +
+  theme(strip.text.y = element_text(size = 8, angle = 0))
+
 
 print(imp_max_plot)
+```
+
+```{r, results='asis'}
+print(xtable(avg_imp_table %>% arrange(desc(imp_o_max)), digits=c(0, 0, 4, 4)), tabular.environment="longtable", floating=FALSE)
+```
+
+```{r}
+avg_imp_table_cs <- rbind(
+  ens_pwc_plt_df %>%
+    mutate(method = paste(combining_method, coupling_method, sep=" ")) %>%
+    group_by(method, combination_size) %>%
+    summarise(imp_o_avg = mean(acc_imp_avg), imp_o_max = mean(acc_imp_max)),
+  ens_cal_plt_df %>%
+    mutate(method = paste0("average of ", calibrating_method)) %>%
+    group_by(method, combination_size) %>%
+    summarise(imp_o_avg = mean(acc_imp_avg), imp_o_max = mean(acc_imp_max))
+)
 ```
 
 ```{r, fig.width=9, fig.height=22}
 for (sss in unique(ens_cal_plt_df$combination_size))
 {
   imp_avg_plot <- ggplot() +
-    geom_boxplot(data = ens_pwc_plt_df %>% filter(coupling_method != "sbt" & combination_size == sss), mapping = aes(x = coupling_method, y = acc_imp_avg)) +
+    geom_boxplot(data = ens_pwc_plt_df %>% filter(combination_size == sss), mapping = aes(x = coupling_method, y = acc_imp_avg)) +
     geom_boxplot(data = ens_cal_plt_df %>% filter(combination_size == sss), mapping = aes(x = calibrating_method, y = acc_imp_avg)) +
     facet_grid(rows = vars(combining_method)) +
-    ggtitle(sprintf("Accuracy improvement over the average of networks, ensemble size %s", sss))
+    ggtitle(sprintf("Accuracy improvement over the average of networks, ensemble size %s", sss)) +
+    theme(strip.text.y = element_text(size = 8, angle = 0))
+
 
   print(imp_avg_plot)
 
+
   imp_max_plot <- ggplot() +
-    geom_boxplot(data = ens_pwc_plt_df %>% filter(coupling_method != "sbt" & combination_size == sss), mapping = aes(x = coupling_method, y = acc_imp_max)) +
+    geom_boxplot(data = ens_pwc_plt_df %>% filter(combination_size == sss), mapping = aes(x = coupling_method, y = acc_imp_max)) +
     geom_boxplot(data = ens_cal_plt_df %>% filter(combination_size == sss), mapping = aes(x = calibrating_method, y = acc_imp_max)) +
     facet_grid(rows = vars(combining_method)) +
-    ggtitle(sprintf("Accuracy improvement over the best of networks, ensemble size %s", sss))
+    ggtitle(sprintf("Accuracy improvement over the best of networks, ensemble size %s", sss)) +
+    theme(strip.text.y = element_text(size = 8, angle = 0))
+
 
   print(imp_max_plot)
+
 }
 ```
+
+```{r, results='asis'}
+for (sss in unique(ens_cal_plt_df$combination_size))
+{
+  print(xtable(avg_imp_table_cs %>% filter(combination_size == sss) %>% arrange(desc(imp_o_avg)), digits=c(0, 0, 0, 4, 4)), tabular.environment="longtable", floating=FALSE)
+  print(xtable(avg_imp_table_cs %>% filter(combination_size == sss) %>% arrange(desc(imp_o_max)), digits=c(0, 0, 0, 4, 4)), tabular.environment="longtable", floating=FALSE)
+}
+```
+
 
 
