@@ -52,6 +52,14 @@ ui <- fluidPage(
         column(
             4,
             actionButton("display", "Display images")
+        ),
+        column(
+            2,
+            numericInput(inputId="disp_images", label="Maximum number of images to display", value=100, min=1)
+        ),
+        column(
+            2,
+            numericInput(inputId="disp_classes", label="Maximum number of classes to display", value=5, min=1)
         )
     ),
     fluidRow(
@@ -231,14 +239,18 @@ server <- function(input, output) {
     })
 
     observeEvent(input$display, {
-        n_for_top <- 5
+        removeUI(
+            selector = "#images"
+        )
+        n_for_top <- input$disp_classes 
+        max_display_imgs <- input$disp_images
 
         correct_labels <- global$cifar$targets + 1
         masks <- matrix(ncol = 0, nrow = length(correct_labels))
         topn_inds <- list()
         topn_probs <- list()
         for (filterID in names(filter_files)) {
-            correct <- input[[paste0("rad_cor_", filterID)]]
+            correct <- as.logical(input[[paste0("rad_cor_", filterID)]])
             predictions <- np$load(filter_files[[filterID]]())
             top_inds <- t(apply(
                 predictions, 1,
@@ -255,6 +267,9 @@ server <- function(input, output) {
 
         res_mask <- apply(masks, 1, prod) == 1
         num_images <- sum(res_mask)
+        if (num_images == 0) {
+            return()
+        }
         correct_classes <- global$cifar$classes[correct_labels[res_mask]]
         topn_inds_selected <- lapply(topn_inds, function(mat) mat[res_mask, ])
         topn_classes_selected <- lapply(
@@ -263,7 +278,7 @@ server <- function(input, output) {
         topn_probs_selected <- lapply(topn_probs, function(mat) mat[res_mask, ])
         images <- global$cifar$data[res_mask, , , ] / 255
 
-        n_plot_imgs <- min(100, num_images)
+        n_plot_imgs <- min(max_display_imgs, num_images)
         disp_images <- images[1:n_plot_imgs, , , ]
         disp_correct_classes <- correct_classes[1:n_plot_imgs]
         disp_topn_classes <- lapply(
@@ -277,13 +292,13 @@ server <- function(input, output) {
             seq(n_plot_imgs),
             function(i) {
                 paste(
-                    paste0("Correct class ", disp_correct_classes[[i]]),
+                    paste0("Correct class: ", disp_correct_classes[[i]]),
                     paste(
                         lapply(
                             seq(length(disp_topn_classes)),
                             function(j) {
                                 paste(
-                                    paste0("Filter ", names(filter_files)[j]),
+                                    paste0("<br/>Filter ", names(filter_files)[j]),
                                     paste(
                                         lapply(
                                             seq(n_for_top),
