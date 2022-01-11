@@ -46,12 +46,16 @@ ui <- fluidPage(
     ),
     fluidRow(
         column(
-            4,
+            3,
             actionButton("add", "Add filter"),
         ),
         column(
-            4,
+            3,
             actionButton("display", "Display images")
+        ),
+        column(
+            2,
+            textOutput(outputId="num_matches")
         ),
         column(
             2,
@@ -267,6 +271,7 @@ server <- function(input, output) {
 
         res_mask <- apply(masks, 1, prod) == 1
         num_images <- sum(res_mask)
+        output$num_matches <- renderText(paste0("Number of matching samples: ", num_images))
         if (num_images == 0) {
             return()
         }
