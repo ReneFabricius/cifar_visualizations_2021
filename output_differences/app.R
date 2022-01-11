@@ -18,7 +18,7 @@ ui <- fluidPage(
         column(
             4,
             textInput("dir_path", "Folder path",
-                value = "D:\\skola\\1\\weighted_ensembles\\tests\\test_cifar_2021\\data\\data_tv_5000_c100\\0\\exp_ensemble_evaluation")
+                value = "/home/fabricius/cifar_2021/data/td_tv_5000_c100/0/exp_ensemble_evaluation")
         ),
         column(
             4,
@@ -33,7 +33,7 @@ ui <- fluidPage(
         column(
             4,
             textInput("cifar_path", "Cifar path",
-                value = "D:\\skola\\1\\weighted_ensembles\\tests\\test_cifar_2021\\data\\cifar_data")
+                value = "/home/fabricius/cifar_2021/data/cifar_data")
         ),
         column(
             4,
