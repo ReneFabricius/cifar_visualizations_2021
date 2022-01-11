@@ -162,7 +162,7 @@ server <- function(input, output) {
         )
 
         observeEvent(input[[rmv_btn_id]], {
-            filter_files[[toString(curID)]] <- NULL
+            filter_files[[toString(curID)]] <<- NULL
             removeUI(
                 selector = paste0("#", div_id)
             )
