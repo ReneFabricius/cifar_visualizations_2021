@@ -26,7 +26,7 @@ my_plot_hook <- function(x, options)
   paste("\n", knitr::hook_plot_tex(x, options), "\n")
 knitr::knit_hooks$set(plot = my_plot_hook)
 
-base_dir <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/new"
+base_dir <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/newnew"
 net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
 ens_df_cal <- read.csv(file.path(base_dir, "ens_cal_metrics.csv"))
 ens_df_pwc <- read.csv(file.path(base_dir, "ens_pwc_metrics.csv"))
@@ -289,6 +289,10 @@ for (sss in unique(ens_cal_plt_df$combination_size))
           c("Error inconsistency", cur_ens_cal$err_incons[[1]]),
           collapse = " "
         ),
+        paste(
+          c("Average pairwise accuracy variance", cur_ens_cal$mean_pwa_var[[1]]),
+          collapse = " "
+        ),
         sep = "\n"
       )))
   }
@@ -297,12 +301,38 @@ for (sss in unique(ens_cal_plt_df$combination_size))
 
 ```{r, fig.height=18, fig.width=9}
 xax <- c(
-  "err_incons",
-  "nll_var", "nll_min", "nll_max", "nll_avg",
-  "acc_var", "acc_min", "acc_max", "acc_avg",
-  "ece_var", "ece_min", "ece_max", "ece_avg"
+  "err_incons", "mean_pwa_var"
 )
 yax <- c("acc_imp_max", "acc_imp_avg")
+
+for (xa in xax)
+{
+  for (ya in yax)
+  {
+    cur_plot <- ggplot() +
+      geom_point(
+        data = ens_cal_plt_df,
+        mapping = aes_string(x = xa, y = ya, color = shQuote("cal ensemble")),
+        alpha = 0.5
+      ) +
+      geom_point(
+        data = ens_pwc_plt_df,
+        mapping = aes_string(x = xa, y = ya, color = "coupling_method"),
+        alpha = 0.5
+      ) +
+      facet_grid(rows = vars(combining_method)) +
+      ggtitle(sprintf(
+        "Accuracy improvement of ensemble over
+      the %s of networks vs %s.",
+        if (ya == "acc_imp_max") "best" else "average", xa
+      )) +
+      coord_cartesian(ylim=c(0, 0.1)) +
+      theme(strip.text.y = element_text(size = 8, angle = 0))
+
+    print(cur_plot)
+  }
+}
+
 for (sss in unique(ens_cal_plt_df$combination_size))
 {
   cur_ens_cal_plt_df <- ens_cal_plt_df %>% filter(combination_size == sss)
@@ -329,6 +359,7 @@ for (sss in unique(ens_cal_plt_df$combination_size))
         Ensemble size %s",
           if (ya == "acc_imp_max") "best" else "average", xa, sss
         )) +
+        coord_cartesian(ylim=c(0, 0.1)) +
         theme(strip.text.y = element_text(size = 8, angle = 0))
 
       print(cur_plot)
@@ -358,6 +389,7 @@ imp_avg_plot <- ggplot() +
 
 
 print(imp_avg_plot)
+print(imp_avg_plot + coord_cartesian(ylim=c(0, 0.1)))
 ```
 
 ```{r, results='asis'}
@@ -374,6 +406,7 @@ imp_max_plot <- ggplot() +
 
 
 print(imp_max_plot)
+print(imp_max_plot + coord_cartesian(ylim=c(0, 0.07)))
 ```
 
 ```{r, results='asis'}
@@ -405,7 +438,7 @@ for (sss in unique(ens_cal_plt_df$combination_size))
 
 
   print(imp_avg_plot)
-
+  print(imp_avg_plot + coord_cartesian(ylim=c(0, 0.1)))
 
   imp_max_plot <- ggplot() +
     geom_boxplot(data = ens_pwc_plt_df %>% filter(combination_size == sss), mapping = aes(x = coupling_method, y = acc_imp_max)) +
@@ -416,6 +449,7 @@ for (sss in unique(ens_cal_plt_df$combination_size))
 
 
   print(imp_max_plot)
+  print(imp_max_plot + coord_cartesian(ylim=c(0, 0.07)))
 
 }
 ```
