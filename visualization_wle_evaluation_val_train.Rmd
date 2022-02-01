@@ -1,5 +1,5 @@
 ---
-title: "WeightedLinearEnsemble evaluation new"
+title: "WeightedLinearEnsemble evaluation validation training"
 output:
   pdf_document: default
   html_notebook: default
@@ -26,7 +26,7 @@ my_plot_hook <- function(x, options)
   paste("\n", knitr::hook_plot_tex(x, options), "\n")
 knitr::knit_hooks$set(plot = my_plot_hook)
 
-base_dir <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/newnew"
+base_dir <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
 net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
 ens_df_cal <- read.csv(file.path(base_dir, "ens_cal_metrics.csv"))
 ens_df_pwc <- read.csv(file.path(base_dir, "ens_pwc_metrics.csv"))
