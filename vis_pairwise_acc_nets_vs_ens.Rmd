@@ -1,0 +1,80 @@
+---
+title: "Pairwise accuracies comparison between networks and ensembles" 
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(ggpubr)
+library(LDATS)
+library(ggVennDiagram)
+library(stringr)
+library(abind)
+library(patchwork)
+
+source("utils.R")
+```
+
+#CIFAR-10
+```{r}
+base_dir <- "../data/data_tv_5000_c10/0/exp_pairwise_acc_nets_vs_ens"
+net_df <- read.csv(file.path(base_dir, "net_pairwise_acc.csv"))
+cal_ens_df <- read.csv(file.path(base_dir, "ens_baseline_pairwise_acc.csv"))
+ens_df <- read.csv(file.path(base_dir, "ens_pairwise_acc.csv"))
+
+net_df[, c("class1", "class2")] <- lapply(net_df[, c("class1", "class2")], as.factor)
+cal_ens_df[, c("class1", "class2")] <- lapply(cal_ens_df[, c("class1", "class2")], as.factor)
+ens_df[, c("class1", "class2")] <- lapply(ens_df[, c("class1", "class2")], as.factor)
+```
+
+```{r setup, fig.height=12, fig.width=12}
+acc_limits <- c(min(min(net_df$accuracy), min(ens_df$accuracy), min(cal_ens_df$accuracy)), 1.0)
+
+net_plot <- net_df %>%
+    ggplot(mapping = aes(x = class2, y = class1, fill = accuracy)) + geom_raster() + facet_wrap(~network, nrow = 2) +
+    xlab("Class") +
+    ylab("Class") +
+    scale_y_discrete(limits = rev) +
+    scale_fill_binned(type = "viridis", limits = acc_limits,  name = "accuracy") +
+    coord_fixed() +
+    ggtitle("Pairwise accuracies networks") +
+    theme(plot.title = element_text(hjust = 0.5),
+      axis.ticks = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank())
+  
+ens_plot <- ens_df %>%
+    ggplot(mapping = aes(x = class2, y = class1, fill = accuracy)) + geom_raster() +
+    facet_wrap(~coupling_method, nrow = 1) +
+    xlab("Class") +
+    ylab("Class") +
+    scale_y_discrete(limits = rev) +
+    coord_fixed() +
+    ggtitle("Pairwise accuracies ensembles") +
+    scale_fill_binned(type = "viridis", limits = acc_limits, name = "accuracy") +
+    theme(plot.title = element_text(hjust = 0.5),
+      axis.ticks = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank())
+
+ens_bsln_plot <- cal_ens_df %>%
+    ggplot(mapping = aes(x = class2, y = class1, fill = accuracy)) + geom_raster() +
+    xlab("Class") +
+    ylab("Class") +
+    scale_y_discrete(limits = rev) +
+    coord_fixed() +
+    ggtitle("Pairwise accuracies ensemble baseline") +
+    scale_fill_binned(type = "viridis", limits = acc_limits, name = "accuracy") +
+    theme(plot.title = element_text(hjust = 0.5),
+      axis.ticks = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank())
+
+    print(ggarrange(net_plot, ens_plot, ens_bsln_plot, ncol = 1, nrow = 3, heights = c(2.0, 1.2, 1.0), common.legend = TRUE, legend = "bottom") +
+        guides(x = guide_axis(angle = 45)))
+
+```
