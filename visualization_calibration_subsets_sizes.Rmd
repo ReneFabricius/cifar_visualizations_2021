@@ -19,7 +19,7 @@ The goal of the experiment is to determine the best calibration subset size.
 # CIFAR-10
 
 ```{r}
-base_dir_tc <- "../data/data_train_val_half_c10/0/exp_subsets_sizes_calibration_outputs/" # nolint
+base_dir_tc <- "../data/old/data_train_val_half_c10/0/exp_subsets_sizes_calibration_outputs/"
 metrics_ens_tc <- read.csv(
   file.path(base_dir_tc, "ens_metrics_train.csv"),
   stringsAsFactors = TRUE)
@@ -247,7 +247,7 @@ ens_nll <- ggplot() +
   ggtitle("Relation of ensemble nll and calibration set size.\nval-cal")
 ens_nll
 ```
-Calibration on validation data worsens the ensemble nll.
+Calibration on validation data slightly improves the ensemble nll. 
 
 
 ```{r}
@@ -294,7 +294,7 @@ ens_accuracy
 # CIFAR100
 
 ```{r}
-base_dir_tc <- "../data/data_train_val_half_c100/0/exp_subsets_sizes_calibration_outputs/" # nolint
+base_dir_tc <- "../data/old/data_train_val_half_c100/0/exp_subsets_sizes_calibration_outputs/" # nolint
 metrics_ens_tc <- read.csv(
   file.path(base_dir_tc, "ens_metrics_train.csv"),
   stringsAsFactors = TRUE)
