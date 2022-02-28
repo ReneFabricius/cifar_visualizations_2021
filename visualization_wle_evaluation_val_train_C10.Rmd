@@ -22,11 +22,12 @@ library(xtable)
 
 
 ```{r}
-my_plot_hook <- function(x, options)
+my_plot_hook <- function(x, options) {
   paste("\n", knitr::hook_plot_tex(x, options), "\n")
+}
 knitr::knit_hooks$set(plot = my_plot_hook)
 
-base_dir <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
+base_dir <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
 net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
 ens_df_cal <- read.csv(file.path(base_dir, "ens_cal_metrics.csv"))
 ens_df_pwc <- read.csv(file.path(base_dir, "ens_pwc_metrics.csv"))
@@ -91,6 +92,7 @@ ens_df_pwc$acc_imp_avg <- ens_df_pwc$accuracy - ens_df_pwc$acc_avg
 ens_df_pwc$acc_imp_max <- ens_df_pwc$accuracy - ens_df_pwc$acc_max
 ```
 
+Metrics for networks.
 ```{r}
 nets_plot <- ggplot(data = net_long) +
   geom_col(mapping = aes(x = network, y = value)) +
@@ -101,21 +103,25 @@ nets_plot <- ggplot(data = net_long) +
 nets_plot
 ```
 
+Plots for individual combinations of networks.
 ```{r setup, warning=FALSE, fig.height=9, fig.fig.width=8}
 ens_pwc_plt_df <- ens_df_pwc %>% filter(combining_method != "lda")
 ens_cal_plt_df <- ens_df_cal
 
 comb_methods <- c(
-    "average", "prob_average",
-    "cal_average", "cal_prob_average",
-    "logreg", "logreg_sweep_C",
-    "logreg_no_interc", "logreg_no_interc_sweep_C",
-    "grad_m1", "grad_m2", "grad_bc"
-  )
-comb_methods <- c(sapply(X=comb_methods, FUN={function(cm) c(cm, paste(cm, "uncert", sep="."))}))
+  "average", "prob_average",
+  "cal_average", "cal_prob_average",
+  "logreg", "logreg_sweep_C",
+  "logreg_no_interc", "logreg_no_interc_sweep_C",
+  "grad_m1", "grad_m2", "grad_bc"
+)
+comb_methods <- c(sapply(X = comb_methods, FUN = {
+  function(cm) c(cm, paste(cm, "uncert", sep = "."))
+}))
 
 ens_pwc_plt_df$combining_method <- factor(ens_pwc_plt_df$combining_method,
-  levels = comb_methods)
+  levels = comb_methods
+)
 
 for (sss in unique(ens_cal_plt_df$combination_size))
 {
@@ -326,7 +332,6 @@ for (xa in xax)
       the %s of networks vs %s.",
         if (ya == "acc_imp_max") "best" else "average", xa
       )) +
-      coord_cartesian(ylim=c(0, 0.1)) +
       theme(strip.text.y = element_text(size = 8, angle = 0))
 
     print(cur_plot)
@@ -359,7 +364,7 @@ for (sss in unique(ens_cal_plt_df$combination_size))
         Ensemble size %s",
           if (ya == "acc_imp_max") "best" else "average", xa, sss
         )) +
-        coord_cartesian(ylim=c(0, 0.1)) +
+        coord_cartesian(ylim = c(0, 0.1)) +
         theme(strip.text.y = element_text(size = 8, angle = 0))
 
       print(cur_plot)
@@ -370,7 +375,7 @@ for (sss in unique(ens_cal_plt_df$combination_size))
 ```{r}
 avg_imp_table <- rbind(
   ens_pwc_plt_df %>%
-    mutate(method = paste(combining_method, coupling_method, sep=" ")) %>%
+    mutate(method = paste(combining_method, coupling_method, sep = " ")) %>%
     group_by(method) %>%
     summarise(imp_o_avg = mean(acc_imp_avg), imp_o_max = mean(acc_imp_max)),
   ens_cal_plt_df %>%
@@ -389,11 +394,12 @@ imp_avg_plot <- ggplot() +
 
 
 print(imp_avg_plot)
-print(imp_avg_plot + coord_cartesian(ylim=c(0, 0.1)))
+print(imp_avg_plot + coord_cartesian(ylim = c(0, 0.1)))
 ```
 
+Sorted by average improvement over the average of networks.
 ```{r, results='asis'}
-print(xtable(avg_imp_table %>% arrange(desc(imp_o_avg)), digits=c(0, 0, 4, 4)), tabular.environment="longtable", floating=FALSE)
+print(xtable(avg_imp_table %>% arrange(desc(imp_o_avg)), digits = c(0, 0, 4, 4)), tabular.environment = "longtable", floating = FALSE)
 ```
 
 ```{r, fig.width=9, fig.height=20}
@@ -406,17 +412,18 @@ imp_max_plot <- ggplot() +
 
 
 print(imp_max_plot)
-print(imp_max_plot + coord_cartesian(ylim=c(0, 0.07)))
+print(imp_max_plot + coord_cartesian(ylim = c(0, 0.07)))
 ```
 
+Sorted by average improvement over the best of the networks.
 ```{r, results='asis'}
-print(xtable(avg_imp_table %>% arrange(desc(imp_o_max)), digits=c(0, 0, 4, 4)), tabular.environment="longtable", floating=FALSE)
+print(xtable(avg_imp_table %>% arrange(desc(imp_o_max)), digits = c(0, 0, 4, 4)), tabular.environment = "longtable", floating = FALSE)
 ```
 
 ```{r}
 avg_imp_table_cs <- rbind(
   ens_pwc_plt_df %>%
-    mutate(method = paste(combining_method, coupling_method, sep=" ")) %>%
+    mutate(method = paste(combining_method, coupling_method, sep = " ")) %>%
     group_by(method, combination_size) %>%
     summarise(imp_o_avg = mean(acc_imp_avg), imp_o_max = mean(acc_imp_max)),
   ens_cal_plt_df %>%
@@ -438,7 +445,7 @@ for (sss in unique(ens_cal_plt_df$combination_size))
 
 
   print(imp_avg_plot)
-  print(imp_avg_plot + coord_cartesian(ylim=c(0, 0.1)))
+  print(imp_avg_plot + coord_cartesian(ylim = c(0, 0.1)))
 
   imp_max_plot <- ggplot() +
     geom_boxplot(data = ens_pwc_plt_df %>% filter(combination_size == sss), mapping = aes(x = coupling_method, y = acc_imp_max)) +
@@ -449,16 +456,13 @@ for (sss in unique(ens_cal_plt_df$combination_size))
 
 
   print(imp_max_plot)
-  print(imp_max_plot + coord_cartesian(ylim=c(0, 0.07)))
-
+  print(imp_max_plot + coord_cartesian(ylim = c(0, 0.07)))
 }
 ```
-
 ```{r, results='asis'}
 for (sss in unique(ens_cal_plt_df$combination_size))
 {
-  print(xtable(avg_imp_table_cs %>% filter(combination_size == sss) %>% arrange(desc(imp_o_avg)), digits=c(0, 0, 0, 4, 4)), tabular.environment="longtable", floating=FALSE)
-  print(xtable(avg_imp_table_cs %>% filter(combination_size == sss) %>% arrange(desc(imp_o_max)), digits=c(0, 0, 0, 4, 4)), tabular.environment="longtable", floating=FALSE)
+  print(xtable(avg_imp_table_cs %>% filter(combination_size == sss) %>% arrange(desc(imp_o_avg)), digits = c(0, 0, 0, 4, 4)), tabular.environment = "longtable", floating = FALSE)
 }
 ```
 
