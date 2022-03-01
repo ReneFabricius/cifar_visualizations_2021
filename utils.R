@@ -417,3 +417,62 @@ gather <- function(data, index, index_dim, along)
   
   return(arr_sel)
 }
+
+add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
+{
+  networks <- net_df$network
+
+  comb_stats_df <- data.frame(matrix(
+  ncol = 14, nrow = 0,
+  dimnames = list(NULL, c(
+      "combination_size", "combination_id",
+      "acc_min", "acc_max", "acc_avg", "acc_var",
+      "nll_min", "nll_max", "nll_avg", "nll_var",
+      "ece_min", "ece_max", "ece_avg", "ece_var"
+  ))
+  ))
+
+  for (sss in unique(ens_df_cal$combination_size))
+  {
+      for (ssi in unique(ens_df_cal %>%
+          filter(combination_size == sss) %>%
+          pull(combination_id)))
+      {
+          cur_nets_vec <- to_vec(
+              for (net in networks) {
+                  if (str_replace_all(net, "-", ".") %in% colnames(ens_df_cal) &&
+                  (ens_df_cal %>%
+                      filter(combination_size == sss & combination_id == ssi) %>%
+                      pull(str_replace_all(net, "-", ".")))[1] == "True") {
+                  net
+                  }
+              }
+          )
+          cur_nets <- net_df %>% filter(network %in% cur_nets_vec)
+          comb_stats_df[nrow(comb_stats_df) + 1, ] <- c(
+          sss, ssi,
+          min(cur_nets$accuracy), max(cur_nets$accuracy), mean(cur_nets$accuracy), var(cur_nets$accuracy),
+          min(cur_nets$nll), max(cur_nets$nll), mean(cur_nets$nll), var(cur_nets$nll),
+          min(cur_nets$ece), max(cur_nets$ece), mean(cur_nets$ece), var(cur_nets$ece)
+          )
+      }
+  }
+
+  ens_df_cal <- merge(ens_df_cal, comb_stats_df)
+  ens_df_cal$acc_imp_avg <- ens_df_cal$accuracy - ens_df_cal$acc_avg
+  ens_df_cal$acc_imp_max <- ens_df_cal$accuracy - ens_df_cal$acc_max
+  ens_df_cal$nll_imp_avg <- -(ens_df_cal$nll - ens_df_cal$nll_avg)
+  ens_df_cal$nll_imp_best <- -(ens_df_cal$nll - ens_df_cal$nll_min)
+  ens_df_cal$ece_imp_avg <- -(ens_df_cal$ece - ens_df_cal$ece_avg)
+  ens_df_cal$ece_imp_best <- -(ens_df_cal$ece - ens_df_cal$ece_min)
+
+  ens_df_pwc <- merge(ens_df_pwc, comb_stats_df)
+  ens_df_pwc$acc_imp_avg <- ens_df_pwc$accuracy - ens_df_pwc$acc_avg
+  ens_df_pwc$acc_imp_max <- ens_df_pwc$accuracy - ens_df_pwc$acc_max
+  ens_df_pwc$nll_imp_avg <- -(ens_df_pwc$nll - ens_df_pwc$nll_avg)
+  ens_df_pwc$nll_imp_best <- -(ens_df_pwc$nll - ens_df_pwc$nll_min)
+  ens_df_pwc$ece_imp_avg <- -(ens_df_pwc$ece - ens_df_pwc$ece_avg)
+  ens_df_pwc$ece_imp_best <- -(ens_df_pwc$ece - ens_df_pwc$ece_min)
+
+  return(list(ens_df_cal, ens_df_pwc))
+}
