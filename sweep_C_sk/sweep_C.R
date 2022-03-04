@@ -20,7 +20,7 @@ eval_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_
 
 plot_plots <- function(base_dir, eval_dir, cifar)
 {
-    metrics <- c("accuracy", "nll", "ece")
+    metrics <- c("acc", "nll", "ece")
     metric_names <- c(accuracy = "presnosť", nll = "NLL", ece = "ECE")
 
     net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
@@ -45,21 +45,50 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                             nll_imp_o_avg_median = median(nll_imp_avg),
                             ece_imp_o_avg_median = median(ece_imp_avg))
 
-    acc_plot <- ens_df_pwc %>%
-                ggplot() +
-                geom_boxplot(mapping = aes(x = C, y = acc_imp_avg, group = C)) +
-                geom_hline(data = ens_eval_df_pwc, mapping = aes(yintercept = acc_imp_o_avg_median, color = "red")) +
-                facet_rep_grid(method ~ ., repeat.tick.labels = TRUE) +
-                scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
-                coord_cartesian(ylim = c(0.0, ifelse(cifar == 10, 0.04, 0.1))) +
-                theme_bw() +
-                theme(axis.line = element_line())
+    limits <- list(
+        "acc" = list("10" = c(0.0, 0.03), "100" = c(0.0, 0.1)),
+        "nll" = list("10" = c(-0.1, 0.12), "100" = c(-1.8, 0.4)),
+        "ece" = list("10" = c(-0.2, 0.07), "100" = c(-0.75, 0.15)))
+    limits_single <- list(
+        "acc" = list("10" = c(0.0, 0.03), "100" = c(0.0, 0.09)),
+        "nll" = list("10" = c(-0.05, 0.12), "100" = c(-0.5, 0.5)),
+        "ece" = list("10" = c(-0.1, 0.07), "100" = c(-0.5, 0.15)))
 
-    file_name <- paste0("c", cifar, "_acc.pdf")
-    ggsave(filename = file.path("sweep_C_sk", file_name), plot = acc_plot, device = cairo_pdf(), height = 40)
+    for (met_i in seq_along(metrics))
+    {
+        met <- metrics[met_i]
+        metric_plot <- ens_df_pwc %>%
+                    ggplot() +
+                    geom_boxplot(mapping = aes_string(x = "C", y = paste0(met, "_imp_avg"), group = "C")) +
+                    geom_hline(data = ens_eval_df_pwc, mapping = aes_string(yintercept = paste0(met, "_imp_o_avg_median"), color = shQuote("red"))) +
+                    facet_rep_grid(method ~ ., repeat.tick.labels = TRUE, scales = "free_x") +
+                    scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
+                    coord_cartesian(ylim = limits[[met]][[as.character(cifar)]]) +
+                    theme_bw() +
+                    theme(axis.line = element_line())
 
+        file_name <- paste0("c", cifar, "_", met, ".pdf")
+        ggsave(filename = file.path("sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 40)
+        dev.off()
 
+        metric_plot <- ens_df_pwc %>% filter(str_split(method, pattern = fixed(" + "), simplify = TRUE)[, 1] == "logreg") %>%
+                    ggplot() +
+                    geom_boxplot(mapping = aes_string(x = "C", y = paste0(met, "_imp_avg"), group = "C")) +
+                    geom_hline(
+                        data = ens_eval_df_pwc %>% filter(str_split(method, pattern = fixed(" + "), simplify = TRUE)[, 1] == "logreg"),
+                        mapping = aes_string(yintercept = paste0(met, "_imp_o_avg_median"), color = shQuote("medián sweep_C"))) +
+                    facet_rep_grid(method ~ ., repeat.tick.labels = TRUE, scales = "free_x") +
+                    scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
+                    coord_cartesian(ylim = limits_single[[met]][[as.character(cifar)]]) +
+                    ylab(paste0("Zlepšenie metriky ", metric_names[met_i], " oproti priemeru sietí")) +
+                    scale_colour_discrete(name = "") +
+                    theme_bw() +
+                    theme(axis.line = element_line())
 
+        file_name <- paste0("print_c", cifar, "_", met, ".pdf")
+        ggsave(filename = file.path("sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 6)
+        dev.off()
+    }
 }
 
 
