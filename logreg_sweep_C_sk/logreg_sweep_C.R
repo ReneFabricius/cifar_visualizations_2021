@@ -86,7 +86,7 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     theme(axis.line = element_line())
 
         file_name <- paste0("print_c", cifar, "_", met, ".pdf")
-        ggsave(filename = file.path("sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 6)
+        ggsave(filename = file.path("logreg_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 6)
         dev.off()
     }
 }
