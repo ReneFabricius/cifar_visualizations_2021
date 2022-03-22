@@ -13,8 +13,8 @@ library(scales)
 
 source("utils.R")
 
-base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/logreg_glob_sweep_C"
-base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/logreg_glob_sweep_C"
+base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/logreg_torch_glob_sweep_C"
+base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/logreg_torch_glob_sweep_C"
 eval_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
 eval_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
 
@@ -68,7 +68,7 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     theme(axis.line = element_line())
 
         file_name <- paste0("c", cifar, "_", met, ".pdf")
-        ggsave(filename = file.path("logreg_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 40)
+        ggsave(filename = file.path("logreg_torch_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 40)
         dev.off()
 
         metric_plot <- ens_df_pwc %>% filter(str_split(method, pattern = fixed(" + "), simplify = TRUE)[, 1] == "logreg") %>%
@@ -86,7 +86,7 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     theme(axis.line = element_line())
 
         file_name <- paste0("print_c", cifar, "_", met, ".pdf")
-        ggsave(filename = file.path("logreg_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 6)
+        ggsave(filename = file.path("logreg_torch_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 6)
         dev.off()
     }
 }
