@@ -53,8 +53,8 @@ plot_plots <- function(base_dir, eval_dir, cifar)
         "ece" = list("10" = c(-0.2, 0.07), "100" = c(-0.75, 0.15)))
     limits_single <- list(
         "acc" = list("10" = c(0.0, 0.03), "100" = c(0.0, 0.1)),
-        "nll" = list("10" = c(-0.05, 0.12), "100" = c(-1.8, 0.8)),
-        "ece" = list("10" = c(-0.1, 0.07), "100" = c(-0.75, 0.15)))
+        "nll" = list("10" = c(-0.05, 0.12), "100" = c(-1.0, 0.8)),
+        "ece" = list("10" = c(-0.1, 0.07), "100" = c(-0.25, 0.15)))
 
     for (met_i in seq_along(metrics))
     {
@@ -67,10 +67,11 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     facet_rep_grid(method ~ ., repeat.tick.labels = TRUE, scales = "free_x") +
                     scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
                     coord_cartesian(ylim = limits[[met]][[as.character(cifar)]]) +
+                    ggtitle(paste0("Cifar ", cifar)) +
                     theme_bw() +
                     theme(axis.line = element_line())
 
-        file_name <- paste0("c", cifar, "_", met, ".pdf")
+        file_name <- paste0("grad_reg_c", cifar, "_", met, ".pdf")
         ggsave(filename = file.path("grad_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 40)
         dev.off()
 
@@ -88,7 +89,7 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     theme_bw() +
                     theme(axis.line = element_line())
 
-        file_name <- paste0("print_c", cifar, "_", met, ".pdf")
+        file_name <- paste0("print_grad_reg_c", cifar, "_", met, ".pdf")
         ggsave(filename = file.path("grad_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 6)
         dev.off()
     }

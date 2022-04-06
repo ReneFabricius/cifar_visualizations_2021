@@ -29,8 +29,10 @@ plot_plots <- function(base_dir, eval_dir, cifar)
     ens_eval_df_pwc <- read.csv(file.path(eval_dir, "ens_pwc_metrics.csv"))
 
     ens_df_pwc$C <- as.double(str_match(ens_df_pwc$combining_method, "\\{base\\_C\\:(\\d+\\.?\\d*)\\}$")[, 2])
-    ens_df_pwc$method <- paste(str_match(ens_df_pwc$combining_method, "^(.+?)\\{.*\\}$")[, 2], ens_df_pwc$coupling_method, sep = " + ")
-
+    ens_df_pwc$method <- paste(
+        str_replace(str_match(ens_df_pwc$combining_method, "^(.+?)\\{.*\\}$")[, 2], fixed("logreg_torch"), "logreg"),
+        ens_df_pwc$coupling_method,
+        sep = " + ")
 
     list[ens_df_cal, ens_df_pwc] <- add_combination_metrics(net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_df_pwc)
 
@@ -64,10 +66,11 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     facet_rep_grid(method ~ ., repeat.tick.labels = TRUE, scales = "free_x") +
                     scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
                     coord_cartesian(ylim = limits[[met]][[as.character(cifar)]]) +
+                    ggtitle(paste0("Cifar ", cifar)) +
                     theme_bw() +
                     theme(axis.line = element_line())
 
-        file_name <- paste0("c", cifar, "_", met, ".pdf")
+        file_name <- paste0("logregt_reg_c", cifar, "_", met, ".pdf")
         ggsave(filename = file.path("logreg_torch_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 40)
         dev.off()
 
@@ -85,7 +88,7 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     theme_bw() +
                     theme(axis.line = element_line())
 
-        file_name <- paste0("print_c", cifar, "_", met, ".pdf")
+        file_name <- paste0("print_logregt_reg_c", cifar, "_", met, ".pdf")
         ggsave(filename = file.path("logreg_torch_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 6)
         dev.off()
     }
