@@ -1,6 +1,7 @@
 library(hash)
 library(reticulate)
 library(berryFunctions)
+library(namedCapture)
 library(dplyr)
 library(purrr)
 library(reshape2)
@@ -475,4 +476,37 @@ add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
   ens_df_pwc$ece_imp_best <- -(ens_df_pwc$ece - ens_df_pwc$ece_min)
 
   return(list(ens_df_cal, ens_df_pwc))
+}
+
+#' Creates a data frame containing pwc ensemble fields and filenames with specified pattern
+get_id_ood_files <- function(id_ptrn, ood_ptrn, dir)
+{
+  files <- list.files(path = dir, pattern = "*.npy")
+  ood_match <- as.data.frame(str_match_named(files, ood_ptrn))
+  ood_files <- files[!is.na(ood_match$nets)]
+  ood_groups <- ood_match[!is.na(ood_match$nets),]
+  ood_groups$file_ood <- ood_files
+
+  id_match <- as.data.frame(str_match_named(files, id_ptrn))
+  id_files <- files[!is.na(id_match$nets)]
+  id_groups <- id_match[!is.na(id_match$nets),]
+  id_groups$file_id <- id_files
+
+  uncert_files <- merge(ood_groups, id_groups)
+  return(uncert_files)  
+
+}
+
+get_unc_files_id_ood <- function(dir)
+{
+  ood_ptrn <- "^(?<nets>.*?)_ens_ood_uncerts_co_(?<combining_method>.*?)_cp_(?<coupling_method>.*?)_prec_(?<precision>.*?)_topl_(?<topl>[+-]?\\d+).npy$"
+  id_ptrn <- "^(?<nets>.*?)_ens_test_uncerts_co_(?<combining_method>.*?)_cp_(?<coupling_method>.*?)_prec_(?<precision>.*?)_topl_(?<topl>[+-]?\\d+).npy$"
+  return(get_id_ood_files(id_ptrn = id_ptrn, ood_ptrn = ood_ptrn, dir = dir))
+}
+
+get_output_files_id_ood <- function(dir)
+{
+  ood_ptrn <- "^(?<nets>.*?)_ens_ood_outputs_co_(?<combining_method>.*?)_cp_(?<coupling_method>.*?)_prec_(?<precision>.*?)_topl_(?<topl>[+-]?\\d+).npy$"
+  id_ptrn <- "^(?<nets>.*?)_ens_test_outputs_co_(?<combining_method>.*?)_cp_(?<coupling_method>.*?)_prec_(?<precision>.*?)_topl_(?<topl>[+-]?\\d+).npy$"
+  return(get_id_ood_files(id_ptrn = id_ptrn, ood_ptrn = ood_ptrn, dir = dir))
 }
