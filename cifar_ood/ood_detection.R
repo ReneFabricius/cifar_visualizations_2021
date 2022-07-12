@@ -47,18 +47,6 @@ plot_det_metrics <- function(dir, dts)
             geom_hpline(
             data = cur_mets,
             mapping = aes(
-                x = coupling_method, y = MLI_AUROC,
-                colour2 = "MLI"
-            ),
-            size = 0.8, width = 0.11,
-            position = position_dodge(width = 0.65)
-            ) %>%
-            rename_geom_aes(new_aes = c("colour" = "colour2"))
-        ) +
-        (
-            geom_hpline(
-            data = cur_mets,
-            mapping = aes(
                 x = coupling_method, y = UNC_AUROC,
                 colour2 = "UNC"
             ),
@@ -94,18 +82,6 @@ plot_det_metrics <- function(dir, dts)
             mapping = aes(
                 x = coupling_method, y = MSP_AUPRC,
                 colour2 = "MSP"
-            ),
-            size = 0.8, width = 0.11,
-            position = position_dodge(width = 0.65)
-            ) %>%
-            rename_geom_aes(new_aes = c("colour" = "colour2"))
-        ) +
-        (
-            geom_hpline(
-            data = cur_mets,
-            mapping = aes(
-                x = coupling_method, y = MLI_AUPRC,
-                colour2 = "MLI"
             ),
             size = 0.8, width = 0.11,
             position = position_dodge(width = 0.65)
