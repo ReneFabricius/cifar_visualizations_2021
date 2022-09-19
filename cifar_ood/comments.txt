@@ -1,0 +1,5 @@
+Uncertainty from bc method behaves strangely. For most configurations, uncertainty of ind samples is higher than that of ood samples. Several configurations using random combining method have the peaks in the correct order, but this is rare. This holds for both C10vsC100 and C100vsC10. Uncertainty values are smallest for average co, for other methods are higher.
+
+Method m1 also has switched peaks ie. higher uncertainty for ind data with combining methods average and random. For cal_average the peaks are poorly separable. For logreg it seems to work good. Highest values of uncertainty are for logreg.
+
+Method m2 works fine for all combining methods. For average and cal_average, there are two peaks in ind distribution, smaller one is overlaping with the peak for ood samples. Highest uncertainty values are with random co.

@@ -41,6 +41,8 @@ plot_uncert_dists <- function(dir, dts)
     {
         print(paste0("Processing co: ", x["combining_method"], " cp: ", x["coupling_method"]))
         pdf(file.path(outputs_folder, paste0(dts, "_unc_", x["combining_method"], "+", x["coupling_method"], ".pdf")))
+        plot.new()
+        text(0.5, 0.5, "Histograms of pairwise coupling uncertainties for ood and ind samples.")
         filt_unc_files <- uncert_files %>% filter(combining_method == x["combining_method"] & coupling_method == x["coupling_method"])
 
         apply(filt_unc_files, 1, plot_distribution)

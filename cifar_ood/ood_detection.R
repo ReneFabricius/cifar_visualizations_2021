@@ -63,6 +63,7 @@ plot_det_metrics <- function(dir, dts)
             aesthetics = "colour2", palette = 2,
             name = "detection method", type = "qual"
         ) +
+        theme_classic() +
         theme(
             axis.text.x = element_blank(),
             axis.title.x = element_blank()
@@ -108,6 +109,7 @@ plot_det_metrics <- function(dir, dts)
             aesthetics = "colour2", palette = 2,
             name = "detection method", type = "qual"
         ) +
+        theme_classic() +
         theme(axis.text.x = element_text(angle = 90))
 
         print(auroc_plot / auprc_plot + plot_layout(guides = "collect") +

@@ -39,12 +39,12 @@ plot_unc_msp <- function(dir, dts)
         min_nz <- min(res_df[res_df$unc != 0, "unc"])
         res_df[res_df$unc == 0, "unc"] <- min_nz / 10
         print(paste0("Min unc: ", min(res_df$unc), " max unc: ", max(res_df$unc)))
-        plot <- ggplot(data = res_df, mapping = aes(x = unc, y = msp)) + 
+        plot <- ggplot(data = res_df, mapping = aes(x = unc, y = msp)) +
             geom_hex(bins = 70) +
             scale_x_log10() +
             scale_fill_continuous(type = "viridis", trans = "log") +
             facet_grid(rows = vars(class)) +
-            ggtitle(label = x["nets"]) 
+            ggtitle(label = x["nets"])
         print(plot)
     }
 
@@ -52,6 +52,8 @@ plot_unc_msp <- function(dir, dts)
     {
         print(paste0("Processing co: ", x["combining_method"], " cp: ", x["coupling_method"]))
         pdf(file.path(outputs_folder, paste0(dts, "_unc_msp_", x["combining_method"], "+", x["coupling_method"], ".pdf")))
+        plot.new()
+        text(0.5, 0.5, "Density plots of relation between\nunc - uncertainty produced by coupling method and\nmsp - maximum softmax probability of the corresponding output.")
         filt_res_files <- res_files %>% filter(combining_method == x["combining_method"] & coupling_method == x["coupling_method"])
 
         apply(filt_res_files, 1, plot_distribution)
