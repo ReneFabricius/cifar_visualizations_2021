@@ -123,6 +123,8 @@ plot_det_metrics <- function(dir, dts)
     {
         print(sprintf("Processing combining method: %s", x["combining_method"]))
         pdf(file.path(outputs_folder,paste0(dts, "_metrics_", x["combining_method"], ".pdf")))
+        plot.new()
+        text(0.5, 0.5, "Area under ROC and PR curves.\nLong dashed lines represent performance of combined networks.\nShort lines are performances of ensembles.")
         filt_metrics <- pwc_metrics %>% filter(combining_method == x["combining_method"])
         comb_ids <- unique(filt_metrics["combination_id"])
         apply(comb_ids, 1, plot_combination, metrics = filt_metrics)
