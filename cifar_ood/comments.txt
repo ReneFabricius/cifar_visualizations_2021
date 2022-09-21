@@ -1,5 +1,24 @@
+Uncertainty densities:
+
 Uncertainty from bc method behaves strangely. For most configurations, uncertainty of ind samples is higher than that of ood samples. Several configurations using random combining method have the peaks in the correct order, but this is rare. This holds for both C10vsC100 and C100vsC10. Uncertainty values are smallest for average co, for other methods are higher.
 
 Method m1 also has switched peaks ie. higher uncertainty for ind data with combining methods average and random. For cal_average the peaks are poorly separable. For logreg it seems to work good. Highest values of uncertainty are for logreg.
 
 Method m2 works fine for all combining methods. For average and cal_average, there are two peaks in ind distribution, smaller one is overlaping with the peak for ood samples. Highest uncertainty values are with random co.
+
+
+Areas under PR and ROC curves:
+
+For combining method average:
+    MSP on ensemble outputs usually performs slightly better than on combined networks. Uncertainties from cp methods are worse. With best being m2. bc and m1 are usually worse than random guessing.
+
+For combining method cal_average:
+    MSP on ensemble outputs almost always performs worse than MSP on all combined networks. For bc cp it performs even worse, especially for C100vsC10. Uncertainties are similarly bad than for average.
+
+For combining method random:
+    For C10vsC100 MSP on ensemble outputs usually has worse results than on the best network, but only slightly. Uncertainties for bc and m1 are bad. Uncertainties for m2 are somehow better, but still consistently worse than MSP on corresponding ensemble.
+    For C100vsC10 MSP on ensembles is better for cp bc and m1 than for m2 and for the former two is usually better than MSP on the best network. Uncertainties are similar than for C10vsC100 case.
+
+For combining method logreg:
+    MSP on ensemble outputs is usually as good as on the best network or slightly better. Uncertainties on cp m1 and m2 are closely behind MSP on ensemble, sometimes better than the networks. m2 rarely even overcoming MSP on the corresponding ensemble. Uncertainty bc is bad.
+    For C100vsC10 the lag of uncertainty behind MSP is slightly larger with m1 uncertainty sometimes being bad. However, bc and m1 MSP perform somewhat better than m2 MSP.
