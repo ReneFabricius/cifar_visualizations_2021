@@ -50,11 +50,16 @@ plot_improvements <- function(dir, dts)
     plot <- ggplot(au_imps) +
                 geom_boxplot(mapping = aes(x = coupling_method, color = metric, y = value), position = "dodge") +
                 geom_hline(yintercept = 0, color = "green", linetype = "dashed") +
-                facet_grid(combining_method ~ ens_detection)
+                facet_grid(combining_method ~ ens_detection) +
+                theme_classic()
     
     ggsave(
         filename = file.path("cifar_ood", paste0(dts, "_au_improvements.pdf")),
         plot=plot)
+    ggsave(
+        filename = file.path("cifar_ood", paste0(dts, "_au_improvements_zoom.pdf")),
+        plot=plot + coord_cartesian(ylim = c(-0.1, 0.05)))
+
 }
 
 base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
