@@ -1,3 +1,6 @@
+library(namedCapture)
+library(reticulate)
+source("utils.R")
 library(ggplot2)
 library(dplyr)
 library(tidyr)
@@ -7,9 +10,9 @@ library(ungeviz)
 library(relayer)
 library(patchwork)
 library(xtable)
-library(namedCapture)
-library(reticulate)
-source("utils.R")
+library(Cairo)
+
+
 
 np <- import("numpy")
 
@@ -27,22 +30,29 @@ plot_uncert_dists <- function(dir, dts, configs)
         cur_files <- uncert_files %>% filter(combining_method == x["combining_method"] & coupling_method == x["coupling_method"] & nets == x["nets"])
         id_unc <- np$load(file.path(dir, cur_files["file_id"][[1]]))
         ood_unc <- np$load(file.path(dir, cur_files["file_ood"][[1]]))
-        uncs <- data.frame(id = id_unc, ood = ood_unc)
-        uncs <- pivot_longer(data = uncs, cols = c("id", "ood"), names_to = "dist")
+        uncs <- data.frame(IND = id_unc, OOD = ood_unc)
+        uncs <- pivot_longer(data = uncs, cols = c("IND", "OOD"), names_to = "dist")
         min_nz <- min(uncs[uncs$value != 0, "value"])
         uncs[uncs$value == 0, "value"] <- min_nz / 10
         print(paste0("Min unc: ", min(uncs$value), " max unc: ", max(uncs$value)))
         plot <- ggplot(data = uncs, mapping = aes(x = value, color = dist)) + 
             geom_histogram(position = "identity", fill = "white", alpha = 0.5, bins = 50) +
             scale_x_log10() +
-            ggtitle(label = x["nets"])
-        ggsave(plot = plot, file = file.path(outputs_folder, paste0(dts, "_unc_", x["combining_method"], "+", x["coupling_method"], "_nets_", x["nets"], ".pdf")))
+            xlab("neistota") +
+            ylab("počet") +
+            scale_color_discrete(name = "Dáta") +
+            theme_classic()
+        ggsave(
+            plot = plot,
+            file = file.path(outputs_folder, paste0(dts, "_unc_", x["combining_method"], "+", x["coupling_method"], "_nets_", x["nets"], ".pdf")),
+            device = cairo_pdf)
     }
 
     lapply(configs, plot_distribution)
 }
 
-conf_10v100 <- list(list(combining_method = "average", coupling_method = "bc", nets = "B16+M_B16+R101x3+R50x1+R50_B16"))
+conf_10v100 <- list(list(combining_method = "random", coupling_method = "bc", nets = "B16+M_B16+R101x3+R50x1+R50_B16"))
+conf_100v10 <- list(list(combining_method = "logreg_torch", coupling_method = "m2", nets = "B16+M_B16+R101x3+R50x1+R50_B16"))
 
 plot_uncert_dists(base_dir_C10, dts = "C10vC100", configs = conf_10v100)
-#plot_uncert_dists(base_dir_C100, dts = "C100vC10", list())
+plot_uncert_dists(base_dir_C100, dts = "C100vC10", configs = conf_100v10)
