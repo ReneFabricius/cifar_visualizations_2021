@@ -7,6 +7,8 @@ library(ungeviz)
 library(relayer)
 library(patchwork)
 library(xtable)
+library(gsubfn)
+source("utils.R")
 
 base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
 base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
@@ -129,7 +131,7 @@ plot_plots <- function(base_dir, cifar)
             ) +
             scale_colour_brewer(
                 aesthetics = "colour2", palette = 2,
-                name = "pwcoupling metóda", type = "qual"
+                name = "párová zväzovacia metóda", type = "qual"
             ) +
             ylab("presnosť") +
             scale_color_manual(values = c("black"), name = "baseline") +
@@ -180,7 +182,7 @@ plot_plots <- function(base_dir, cifar)
             ) +
             scale_colour_brewer(
                 aesthetics = "colour2", palette = 2,
-                name = "pwcoupling metóda", type = "qual"
+                name = "párová zväzovacia metóda", type = "qual"
             ) +
             ylab("NLL") +
             scale_color_manual(values = c("black"), name = "baseline") +
@@ -234,7 +236,7 @@ plot_plots <- function(base_dir, cifar)
             ) +
             scale_colour_brewer(
                 aesthetics = "colour2", palette = 2,
-                name = "pwcoupling metóda", type = "qual"
+                name = "párová zväzovacia metóda", type = "qual"
             ) +
             ylab("ECE") +
             xlab("kombinačná metóda") +
@@ -302,7 +304,7 @@ plot_plots <- function(base_dir, cifar)
             ylab(y_lab) +
             theme_bw() +
             scale_shape_manual(name = "druh ansámblu", values = c(1, 17)) +
-            scale_color_discrete(name = "pwcoupling metóda") +
+            scale_color_discrete(name = "párová zväzovacia metóda") +
             theme(strip.text.y = element_text(size = 8, angle = 0))
 
             plot_name <- paste0("evaluation_sk/C", cifar, "_relation_", ya, "~", xa, ".pdf")
