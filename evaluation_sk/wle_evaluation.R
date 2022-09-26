@@ -13,41 +13,55 @@ source("utils.R")
 base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
 base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
 
-plot_plots <- function(base_dir, cifar)
-{
-    metrics <- c("accuracy", "nll", "ece")
-    metric_names <- c(accuracy = "presnosť", nll = "NLL", ece = "ECE")
+metrics <- c("accuracy", "nll", "ece")
+metric_names <- c(accuracy = "presnosť", nll = "NLL", ece = "ECE")
 
+load_ens_dfs <- function(base_dir, comb_methods = NULL)
+{
     net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
     ens_df_cal <- read.csv(file.path(base_dir, "ens_cal_metrics.csv"))
     ens_df_pwc <- read.csv(file.path(base_dir, "ens_pwc_metrics.csv"))
 
-    net_long <- pivot_longer(net_df,
-    cols = c("accuracy", "nll", "ece"),
-    names_to = "metric", values_to = "value"
-    )
-    ens_cal_long <- pivot_longer(ens_df_cal,
-    cols = c("accuracy", "nll", "ece"),
-    names_to = "metric", values_to = "value"
-    )
-    ens_pwc_long <- pivot_longer(ens_df_pwc,
-    cols = c("accuracy", "nll", "ece"),
-    names_to = "metric", values_to = "value"
-    )
-
     networks <- net_df$network
 
-    comb_stats_df <- data.frame(matrix(
-    ncol = 14, nrow = 0,
-    dimnames = list(NULL, c(
-        "combination_size", "combination_id",
-        "acc_min", "acc_max", "acc_avg", "acc_var",
-        "nll_min", "nll_max", "nll_avg", "nll_var",
-        "ece_min", "ece_max", "ece_avg", "ece_var"
-    ))
-    ))
-
     list[ens_df_cal, ens_df_pwc] <- add_combination_metrics(net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_df_pwc)
+
+    ens_pwc_plt_df <- ens_df_pwc # %>% filter(combining_method != "lda")
+    ens_cal_plt_df <- ens_df_cal
+
+    if (is.null(comb_methods))
+    {
+        comb_methods <- c(
+        "average", "prob_average",
+        "cal_average", "cal_prob_average",
+        "logreg", "logreg_sweep_C",
+        "logreg_no_interc", "logreg_no_interc_sweep_C",
+        "grad_m1", "grad_m2", "grad_bc"
+        )
+        comb_methods <- c(sapply(X = comb_methods, FUN = {
+        function(cm) c(cm, paste(cm, "uncert", sep = "."))
+        }))
+    }
+
+    ens_pwc_plt_df <- ens_pwc_plt_df %>% filter(combining_method %in% comb_methods)
+
+    ens_pwc_plt_df$combining_method <- factor(ens_pwc_plt_df$combining_method,
+    levels = comb_methods
+    )
+
+    return(list(ens_cal_plt_df, ens_pwc_plt_df))
+}
+
+plot_nets <- function(base_dir, cifar)
+{
+    net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
+    
+    net_long <- pivot_longer(
+        net_df,
+        cols = c("accuracy", "nll", "ece"),
+        names_to = "metric", values_to = "value"
+    )
+
 
     nets_plot <- ggplot(data = net_long) +
         geom_col(mapping = aes(x = network, y = value)) +
@@ -60,25 +74,16 @@ plot_plots <- function(base_dir, cifar)
 
     plot_name <- paste0("evaluation_sk/C", cifar, "_net_metrics.pdf")
     ggsave(plot = nets_plot, filename = plot_name, device = cairo_pdf)
+}
 
+plot_ensembles <- function(base_dir, cifar)
+{
 
-    ens_pwc_plt_df <- ens_df_pwc # %>% filter(combining_method != "lda")
-    ens_cal_plt_df <- ens_df_cal
+    net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
 
-    comb_methods <- c(
-    "average", "prob_average",
-    "cal_average", "cal_prob_average",
-    "logreg", "logreg_sweep_C",
-    "logreg_no_interc", "logreg_no_interc_sweep_C",
-    "grad_m1", "grad_m2", "grad_bc"
-    )
-    comb_methods <- c(sapply(X = comb_methods, FUN = {
-    function(cm) c(cm, paste(cm, "uncert", sep = "."))
-    }))
+    networks <- net_df$network
 
-    ens_pwc_plt_df$combining_method <- factor(ens_pwc_plt_df$combining_method,
-    levels = comb_methods
-    )
+    list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir)
 
     for (sss in max(ens_cal_plt_df$combination_size))
     {
@@ -135,7 +140,7 @@ plot_plots <- function(base_dir, cifar)
             ) +
             ylab("presnosť") +
             scale_color_manual(values = c("black"), name = "baseline") +
-            scale_x_discrete(labels = 1:length(comb_methods)) +
+            scale_x_discrete(labels = 1:length(unique(cur_ens_pwc$combining_method))) +
             theme_classic() +
             theme(
                 axis.text.x = element_text(angle = 90),
@@ -187,21 +192,21 @@ plot_plots <- function(base_dir, cifar)
             ylab("NLL") +
             scale_color_manual(values = c("black"), name = "baseline") +
             scale_y_reverse() +
-            scale_x_discrete(labels = 1:length(comb_methods)) +
+            scale_x_discrete(labels = 1:length(unique(cur_ens_pwc$combining_method))) +
             theme_classic() +
             theme(
                 axis.text.x = element_text(angle = 90),
                 axis.title.x = element_blank()
             )
 
-            nums <- c(1:length(comb_methods))
-            names(nums) <- comb_methods
-            max_len <- max(unlist(lapply(X = comb_methods, FUN = nchar)))
+            nums <- c(1:length(unique(cur_ens_pwc$combining_method)))
+            names(nums) <- levels(cur_ens_pwc$combining_method)
+            max_len <- max(unlist(lapply(X = levels(cur_ens_pwc$combining_method), FUN = nchar)))
             x_labs <- lapply(
                 X = nums,
                 FUN = function(i) paste0(str_pad(
-                    string = comb_methods[i],
-                    width = 1.8 * max_len - 0.8 * nchar(comb_methods[i]) + 4,
+                    string = levels(cur_ens_pwc$combining_method)[i],
+                    width = 1.8 * max_len - 0.8 * nchar(levels(cur_ens_pwc$combining_method)[i]) + 4,
                     side = "both",
                     pad = " "), i))
 
@@ -264,6 +269,13 @@ plot_plots <- function(base_dir, cifar)
             ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf)
         }
     }
+}
+
+plot_dependencies <- function(base_dir, cifar)
+{
+    net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
+
+    list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir)
 
     xax <- c(
     "err_incons", "mean_pwa_var"
@@ -311,20 +323,25 @@ plot_plots <- function(base_dir, cifar)
             ggsave(plot = cur_plot, filename = plot_name, device = cairo_pdf, height = 40)
         }
     }
+}
+
+comp_tables <- function(base_dir, cifar)
+{
+    list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir)
 
     avg_imp_table <- rbind(
         ens_pwc_plt_df %>%
             mutate(method = paste(combining_method, toupper(coupling_method), sep = " + ")) %>%
             group_by(method) %>%
             summarise(
-                acc_imp_o_avg = mean(acc_imp_avg), acc_imp_o_best = mean(acc_imp_max),
+                acc_imp_o_avg = mean(acc_imp_avg), acc_imp_o_best = mean(acc_imp_best),
                 nll_imp_o_avg = mean(nll_imp_avg), nll_imp_o_best = mean(nll_imp_best),
                 ece_imp_o_avg = mean(ece_imp_avg), ece_imp_o_best = mean(ece_imp_best)),
         ens_cal_plt_df %>%
             mutate(method = paste0("baseline - ", calibrating_method)) %>%
             group_by(method) %>%
             summarise(
-                acc_imp_o_avg = mean(acc_imp_avg), acc_imp_o_best = mean(acc_imp_max),
+                acc_imp_o_avg = mean(acc_imp_avg), acc_imp_o_best = mean(acc_imp_best),
                 nll_imp_o_avg = mean(nll_imp_avg), nll_imp_o_best = mean(nll_imp_best),
                 ece_imp_o_avg = mean(ece_imp_avg), ece_imp_o_best = mean(ece_imp_best))
         )
@@ -334,6 +351,152 @@ plot_plots <- function(base_dir, cifar)
 
     table_name <- paste0("evaluation_sk/C", cifar, "_improvements_table.csv")
     write.csv(avg_imp_table, file = table_name, row.names = FALSE, na = "")
+}
+
+plot_improvements <- function(base_dir, cifar, over = "best", comb_methods = NULL)
+{
+    list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir, comb_methods = comb_methods)
+    small_box_width <- 0.4
+    small_box_size <- 0.9
+    big_box_width <- length(levels(ens_pwc_plt_df$combining_method))
+    big_box_x <- 1 + (length(levels(ens_pwc_plt_df$combining_method)) - 1) / 2
+
+    acc_plot <- ggplot() +
+    geom_boxplot(
+        data = ens_cal_plt_df,
+        mapping = aes(y = !! sym(paste0("acc_imp_", over)), color = "TemperatureScaling",
+            x = big_box_x),
+        width = big_box_width
+        ) +
+    (
+        geom_boxplot(
+        data = ens_pwc_plt_df,
+        mapping = aes(
+            x = combining_method, y = !! sym(paste0("acc_imp_", over)),
+            colour2 = coupling_method
+        ),
+        size = small_box_size, width = small_box_width,
+        position = position_dodge(width = 0.65)
+        ) %>%
+        rename_geom_aes(new_aes = c("colour" = "colour2"))
+    ) +
+    scale_colour_brewer(
+        aesthetics = "colour2", palette = 2,
+        name = "párová zväzovacia metóda", type = "qual"
+    ) +
+    ylab("presnosť") +
+    scale_color_manual(values = c("black"), name = "baseline") +
+    scale_x_discrete(labels = 1:length(levels(ens_pwc_plt_df$combining_method))) +
+    theme_classic() +
+    theme(
+        axis.text.x = element_text(angle = 90),
+        axis.title.x = element_blank()
+    )
+
+    if (cifar == 100)
+    {
+        acc_plot <- acc_plot + coord_cartesian(ylim = c(-0.1, 0.1))
+    }
+
+    nll_plot <- ggplot() +
+    geom_boxplot(
+        data = ens_cal_plt_df,
+        mapping = aes(y = !! sym(paste0("nll_imp_", over)), color = "TemperatureScaling",
+            x = big_box_x),
+        width = big_box_width
+    ) +
+    (
+        geom_boxplot(
+        data = ens_pwc_plt_df,
+        mapping = aes(
+            x = combining_method, y = !! sym(paste0("nll_imp_", over)),
+            colour2 = coupling_method
+        ),
+        size = small_box_size, width = small_box_width,
+        position = position_dodge(width = 0.65)
+        ) %>%
+        rename_geom_aes(new_aes = c("colour" = "colour2"))
+    ) +
+    scale_colour_brewer(
+        aesthetics = "colour2", palette = 2,
+        name = "párová zväzovacia metóda", type = "qual"
+    ) +
+    ylab("NLL") +
+    scale_color_manual(values = c("black"), name = "baseline") +
+    scale_x_discrete(labels = 1:length(unique(ens_pwc_plt_df$combining_method))) +
+    theme_classic() +
+    theme(
+        axis.text.x = element_text(angle = 90),
+        axis.title.x = element_blank()
+    )
+
+    nums <- c(1:length(unique(ens_pwc_plt_df$combining_method)))
+    names(nums) <- levels(ens_pwc_plt_df$combining_method)
+    max_len <- max(unlist(lapply(X = levels(ens_pwc_plt_df$combining_method), FUN = nchar)))
+    x_labs <- lapply(
+        X = nums,
+        FUN = function(i) paste0(str_pad(
+            string = levels(ens_pwc_plt_df$combining_method)[i],
+            width = 1.8 * max_len - 0.8 * nchar(levels(ens_pwc_plt_df$combining_method)[i]) + 4,
+            side = "both",
+            pad = " "), i))
+
+    ece_plot <- ggplot() +
+    geom_boxplot(
+        data = ens_cal_plt_df,
+        mapping = aes(y = !! sym(paste0("ece_imp_", over)), color = "TemperatureScaling",
+            x = big_box_x),
+        width = big_box_width
+    ) +
+    (
+        geom_boxplot(
+        data = ens_pwc_plt_df,
+        mapping = aes(
+            x = combining_method, y = !! sym(paste0("ece_imp_", over)),
+            colour2 = coupling_method
+        ),
+        size = small_box_size, width = small_box_width,
+        position = position_dodge(width = 0.65)
+        ) %>%
+        rename_geom_aes(new_aes = c("colour" = "colour2"))
+    ) +
+    scale_colour_brewer(
+        aesthetics = "colour2", palette = 2,
+        name = "párová zväzovacia metóda", type = "qual"
+    ) +
+    ylab("ECE") +
+    xlab("kombinačná metóda") +
+    scale_color_manual(values = c("black"), name = "baseline") +
+    scale_x_discrete(labels = x_labs) +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90))
+
+    res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect") +
+        plot_annotation(title = paste0(
+            "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
+        )
+
+    plot_name <- paste0("evaluation_sk/C", cifar, "_ensemble_improvements_over_", over, ".pdf")
+    ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 15, height = 7)
+}
+
+plot_plots <- function(base_dir, cifar)
+{
+    subs_comb_m <- c(
+        "cal_average",
+        "cal_average.uncert",
+        "logreg",
+        "logreg.uncert",
+        "logreg_no_interc_sweep_C",
+        "logreg_no_interc_sweep_C.uncert",
+        "grad_m2",
+        "grad_m2.uncert"
+    )
+    plot_nets(base_dir = base_dir, cifar = cifar)
+    plot_ensembles(base_dir = base_dir, cifar = cifar)
+    plot_dependencies(base_dir = base_dir, cifar = cifar)
+    comp_tables(base_dir = base_dir, cifar = cifar)
+    plot_improvements(base_dir = base_dir, cifar = cifar, comb_methods = subs_comb_m)
 }
 
 

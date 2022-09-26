@@ -461,7 +461,7 @@ add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
 
   ens_df_cal <- merge(ens_df_cal, comb_stats_df)
   ens_df_cal$acc_imp_avg <- ens_df_cal$accuracy - ens_df_cal$acc_avg
-  ens_df_cal$acc_imp_max <- ens_df_cal$accuracy - ens_df_cal$acc_max
+  ens_df_cal$acc_imp_best <- ens_df_cal$accuracy - ens_df_cal$acc_max
   ens_df_cal$nll_imp_avg <- -(ens_df_cal$nll - ens_df_cal$nll_avg)
   ens_df_cal$nll_imp_best <- -(ens_df_cal$nll - ens_df_cal$nll_min)
   ens_df_cal$ece_imp_avg <- -(ens_df_cal$ece - ens_df_cal$ece_avg)
@@ -469,7 +469,7 @@ add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
 
   ens_df_pwc <- merge(ens_df_pwc, comb_stats_df)
   ens_df_pwc$acc_imp_avg <- ens_df_pwc$accuracy - ens_df_pwc$acc_avg
-  ens_df_pwc$acc_imp_max <- ens_df_pwc$accuracy - ens_df_pwc$acc_max
+  ens_df_pwc$acc_imp_best <- ens_df_pwc$accuracy - ens_df_pwc$acc_max
   ens_df_pwc$nll_imp_avg <- -(ens_df_pwc$nll - ens_df_pwc$nll_avg)
   ens_df_pwc$nll_imp_best <- -(ens_df_pwc$nll - ens_df_pwc$nll_min)
   ens_df_pwc$ece_imp_avg <- -(ens_df_pwc$ece - ens_df_pwc$ece_avg)
