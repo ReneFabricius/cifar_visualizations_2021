@@ -362,6 +362,7 @@ plot_improvements <- function(base_dir, cifar, over = "best", comb_methods = NUL
     big_box_x <- 1 + (length(levels(ens_pwc_plt_df$combining_method)) - 1) / 2
 
     acc_plot <- ggplot() +
+    geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
     geom_boxplot(
         data = ens_cal_plt_df,
         mapping = aes(y = !! sym(paste0("acc_imp_", over)), color = "TemperatureScaling",
@@ -399,6 +400,7 @@ plot_improvements <- function(base_dir, cifar, over = "best", comb_methods = NUL
     }
 
     nll_plot <- ggplot() +
+    geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
     geom_boxplot(
         data = ens_cal_plt_df,
         mapping = aes(y = !! sym(paste0("nll_imp_", over)), color = "TemperatureScaling",
@@ -442,6 +444,7 @@ plot_improvements <- function(base_dir, cifar, over = "best", comb_methods = NUL
             pad = " "), i))
 
     ece_plot <- ggplot() +
+    geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
     geom_boxplot(
         data = ens_cal_plt_df,
         mapping = aes(y = !! sym(paste0("ece_imp_", over)), color = "TemperatureScaling",
@@ -492,11 +495,36 @@ plot_plots <- function(base_dir, cifar)
         "grad_m2",
         "grad_m2.uncert"
     )
+
+    subs_c10 <- c(
+        "cal_average",
+        "cal_average.uncert",
+        "logreg_no_interc",
+        "logreg_no_interc.uncert",
+        "logreg",
+        "grad_m1",
+        "grad_m2",
+        "grad_bc"
+    )
+
+    subs_c100 <- c(
+        "cal_average",
+        "logreg",
+        "logreg_no_interc",
+        "logreg_sweep_C",
+        "logreg_no_interc_sweep_C",
+        "grad_m1",
+        "grad_m2"
+    )
+    subs <- list("10" = subs_c10, "100" = subs_c100)
+
     plot_nets(base_dir = base_dir, cifar = cifar)
     plot_ensembles(base_dir = base_dir, cifar = cifar)
     plot_dependencies(base_dir = base_dir, cifar = cifar)
     comp_tables(base_dir = base_dir, cifar = cifar)
-    plot_improvements(base_dir = base_dir, cifar = cifar, comb_methods = subs_comb_m)
+    plot_improvements(
+        base_dir = base_dir, cifar = cifar,
+        comb_methods = subs[[as.character(cifar)]])
 }
 
 
