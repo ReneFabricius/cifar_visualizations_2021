@@ -493,7 +493,7 @@ get_id_ood_files <- function(id_ptrn, ood_ptrn, dir)
   id_groups$file_id <- id_files
 
   uncert_files <- merge(ood_groups, id_groups)
-  return(uncert_files)  
+  return(uncert_files)
 
 }
 
@@ -509,4 +509,71 @@ get_output_files_id_ood <- function(dir)
   ood_ptrn <- "^(?<nets>.*?)_ens_ood_outputs_co_(?<combining_method>.*?)_cp_(?<coupling_method>.*?)_prec_(?<precision>.*?)_topl_(?<topl>[+-]?\\d+).npy$"
   id_ptrn <- "^(?<nets>.*?)_ens_test_outputs_co_(?<combining_method>.*?)_cp_(?<coupling_method>.*?)_prec_(?<precision>.*?)_topl_(?<topl>[+-]?\\d+).npy$"
   return(get_id_ood_files(id_ptrn = id_ptrn, ood_ptrn = ood_ptrn, dir = dir))
+}
+
+CAL_ENS_PTRN <- function(subject, suffix)
+{
+  list(
+    nets = ".*?",
+    "_",
+    subject,
+    "_cal_",
+    calibrating_method = ".*?",
+    "_prec_",
+    computational_precision = ".*?",
+    suffix
+  )
+}
+
+PWC_ENS_PTRN <- function(subject, suffix)
+{
+  list(
+    nets = ".*?",
+    "_",
+    subject,
+    "_co_",
+    combining_method = ".*?",
+    "_cp_",
+    coupling_method = ".*?",
+    "_prec_",
+    computational_precision = ".*?",
+    "_topl_",
+    topl = list("[+-]?\\d+", as.integer),
+    suffix
+  ) 
+}
+
+PATTERNS <- list(
+  cal_ens_test_output = CAL_ENS_PTRN(subject = "ens_test_outputs", suffix = ".npy"),
+  cal_ens_ood_output = CAL_ENS_PTRN(subject = "ens_ood_outputs", suffix = ".npy"),
+  cal_ens_train_output = CAL_ENS_PTRN(subject = "ens_train_outputs", suffix = ".npy"),
+  pwc_ens_test_output = PWC_ENS_PTRN(subject = "ens_test_outputs", suffix = ".npy"),
+  pwc_ens_ood_output = PWC_ENS_PTRN(subject = "ens_ood_outputs", suffix = ".npy"),
+  pwc_ens_train_output = PWC_ENS_PTRN(subject = "ens_train_outputs", suffix = ".npy"),
+  pwc_ens_test_unc = PWC_ENS_PTRN(subject = "ens_test_uncerts", suffix = ".npy"),
+  pwc_ens_ood_unc = PWC_ENS_PTRN(subject = "ens_ood_uncerts", suffix = ".npy"),
+  cal_ens_msp_roc = CAL_ENS_PTRN(subject = "ens_msp_roc", suffix = ".csv"),
+  cal_ens_msp_prc = CAL_ENS_PTRN(subject = "ens_msp_prc", suffix = ".csv"),
+  pwc_ens_msp_roc = PWC_ENS_PTRN(subject = "ens_msp_roc", suffix = ".csv"),
+  pwc_ens_msp_prc = PWC_ENS_PTRN(subject = "ens_msp_prc", suffix = ".csv"),
+  pwc_ens_unc_roc = PWC_ENS_PTRN(subject = "ens_unc_roc", suffix = ".csv"),
+  pwc_ens_unc_prc = PWC_ENS_PTRN(subject = "ens_unc_prc", suffix = ".csv")
+)
+
+find_files_by_ptrn <- function(dir, ptrns)
+{
+  files <- list.files(path = dir, pattern = "*")
+  filter_files <- function(ptrn_i)
+  {
+    name <- names(ptrns)[[ptrn_i]]
+    pt <- ptrns[[ptrn_i]]
+    ptrn <- PATTERNS[[pt]]
+    match <- namedCapture::str_match_variable(files, ptrn)
+    matched_files <- files[rowSums(is.na(match)) == 0]
+    match <- na.omit(match)
+    match[name] <- matched_files
+    return(match)
+  }
+  res_dfs <- lapply(seq_along(ptrns), filter_files)
+  merged <- res_dfs %>% reduce(full_join)
 }
