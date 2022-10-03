@@ -48,7 +48,6 @@ plot_per_config <- function(dir, dts, outputs_folder = "cifar_ood")
 
     plot_per_class_distr <- function(x, outputs_folder)
     {
-
         id_unc <- np$load(file.path(dir, x["unc_ind"]))
         unc_class <- cbind(lab_name, data.frame(uncert = id_unc))
         unc_class$name <- as.factor(unc_class$name)
