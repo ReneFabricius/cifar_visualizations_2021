@@ -557,7 +557,9 @@ PATTERNS <- list(
   pwc_ens_msp_roc = PWC_ENS_PTRN(subject = "ens_msp_roc", suffix = ".csv"),
   pwc_ens_msp_prc = PWC_ENS_PTRN(subject = "ens_msp_prc", suffix = ".csv"),
   pwc_ens_unc_roc = PWC_ENS_PTRN(subject = "ens_unc_roc", suffix = ".csv"),
-  pwc_ens_unc_prc = PWC_ENS_PTRN(subject = "ens_unc_prc", suffix = ".csv")
+  pwc_ens_unc_prc = PWC_ENS_PTRN(subject = "ens_unc_prc", suffix = ".csv"),
+  net_msp_roc = list(net = ".*?", "_roc.csv"),
+  net_msp_prc = list(net = ".*?", "_prc.csv")
 )
 
 find_files_by_ptrn <- function(dir, ptrns)
@@ -568,7 +570,7 @@ find_files_by_ptrn <- function(dir, ptrns)
     name <- names(ptrns)[[ptrn_i]]
     pt <- ptrns[[ptrn_i]]
     ptrn <- PATTERNS[[pt]]
-    match <- namedCapture::str_match_variable(files, ptrn)
+    match <- as.data.frame(namedCapture::str_match_variable(files, ptrn))
     matched_files <- files[rowSums(is.na(match)) == 0]
     match <- na.omit(match)
     match[name] <- matched_files
