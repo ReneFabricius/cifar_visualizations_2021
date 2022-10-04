@@ -66,26 +66,52 @@ plot_improvements <- function(dir, dts)
             names_pattern = "CAL_MSP_o_max_MSP_(.*?)$"
         )
 
-    big_box_width <- length(unique(au_imps_pwc$coupling_method))
-    big_box_x <- (1 + big_box_width) / 2
+    au_imps_pwc$coupling_method <- as.factor(toupper(au_imps_pwc$coupling_method))
+    au_imps_pwc$combining_method <- as.factor(au_imps_pwc$combining_method)
+    au_imps_pwc <- au_imps_pwc %>% dplyr::mutate(
+        combining_method = dplyr::recode(combining_method, logreg_torch = "logreg"))
 
-    plot <- ggplot() +
-                geom_boxplot(au_imps_pwc, mapping = aes(x = coupling_method, met_col = metric, y = value), position = "dodge") %>%
-                    relayer::rename_geom_aes(new_aes = c("colour" = "met_col")) +
-                geom_boxplot(au_imps_cal, mapping = aes(y = value, color = "TemperatureScaling", x = big_box_x), width = big_box_width) +
-                geom_hline(yintercept = 0, color = "green", linetype = "dashed") +
-                facet_grid(combining_method ~ ens_detection) +
-                scale_colour_brewer(aesthetics = "met_col", name = "metric", type = "qual") +
-                scale_color_manual(values = c("black"), name = "baseline") +
-                theme_classic()
-    
-    ggsave(
-        filename = file.path("cifar_ood", paste0(dts, "_au_improvements.pdf")),
-        plot=plot)
-    ggsave(
-        filename = file.path("cifar_ood", paste0(dts, "_au_improvements_zoom.pdf")),
-        plot=plot + coord_cartesian(ylim = c(-0.05, 0.02)))
 
+    plot_metric <- function(ood_method)
+    {
+        au_imps_pwc_print <- au_imps_pwc %>% filter(ens_detection == ood_method)
+        if (ood_method == "UNC")
+        {
+            au_imps_pwc_print <- au_imps_pwc_print %>% filter(
+                combining_method == "logreg",
+                coupling_method != "BC")
+        }
+
+        big_box_width <- length(unique(au_imps_pwc_print$coupling_method))
+        big_box_x <- (1 + big_box_width) / 2
+
+        plot <- ggplot() +
+                scale_x_discrete(breaks = levels(au_imps_pwc$coupling_method), name = "párová zväzovacia metóda") +
+                geom_boxplot(
+                    au_imps_cal,
+                    mapping = aes(y = value, color = "TemperatureScaling", x = big_box_x),
+                    width = big_box_width) +
+                geom_boxplot(
+                    au_imps_pwc_print,
+                    mapping = aes(
+                        x = coupling_method,
+                        y = value,
+                        color = paste0("WLE ", ifelse(ood_method == "UNC", "neistota", "MSP"))),
+                        position = "dodge") +
+                geom_hline(yintercept = 0.0, color = "red", linetype = "dashed", alpha = 0.5) +
+                facet_grid(combining_method ~ metric) +
+                scale_color_brewer(type = "qual", palette = 2, name = "metóda detekcie") +
+                ylab(paste0("zlepšenie")) +
+                theme_bw()
+
+        plot <- plot + coord_cartesian(ylim = c(ifelse(ood_method == "UNC", -0.2, -0.025), ifelse(ood_method == "UNC", 0.03, 0.04)))
+        ggsave(
+            filename = file.path("cifar_ood", paste0(dts, "_", ood_method, "_au_improvements.pdf")),
+            plot = plot
+        )
+    }
+    plot_metric("ENS")
+    plot_metric("UNC")
 }
 
 base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"

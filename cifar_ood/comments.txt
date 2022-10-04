@@ -9,6 +9,15 @@ Method m2 works fine for all combining methods. For average and cal_average, the
 
 Areas under PR and ROC curves:
 
+For coupling method bc:
+    Detection from uncertainties is bad. Detection from MSP on ensemble outputs is better, for logreg and average it's better than MSP on TempScal, for random it's similar or worse and for cal_average it's bad.
+For coupling method m1:
+    Detection from uncertainties is bad. Detection from MSP on ensemble same as above.
+    On C100vC10 some interesting good ROC curves.
+For coupling method m2:
+    Detection from uncertainties is good only for configuration logreg + m2 and AUPRC is still somewhat bad. MSP on ens output same as above.
+    Poor PRC - drop in precision at the begining.
+
 For combining method average:
     MSP on ensemble outputs usually performs slightly better than on combined networks. Uncertainties from cp methods are worse. With best being m2. bc and m1 are usually worse than random guessing.
 
@@ -22,3 +31,5 @@ For combining method random:
 For combining method logreg:
     MSP on ensemble outputs is usually as good as on the best network or slightly better. Uncertainties on cp m1 and m2 are closely behind MSP on ensemble, sometimes better than the networks. m2 rarely even overcoming MSP on the corresponding ensemble. Uncertainty bc is bad.
     For C100vsC10 the lag of uncertainty behind MSP is slightly larger with m1 uncertainty sometimes being bad. However, bc and m1 MSP perform somewhat better than m2 MSP.
+
+Do prace suhrnne grafy. Z individualnych vyzeraju zaujimavo dobre ROC pre M1 + logreg a zle PRC pre M2 + logreg (bimodalita??).
