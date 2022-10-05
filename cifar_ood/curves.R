@@ -4,82 +4,13 @@ library(relayer)
 library(stringr)
 library(ggplot2)
 
-np <- import("numpy")
-
-source("utils.R")
-
-curve_axes <- c(
-    roc = c(x = "FPR", y = "TPR"),
-    prc = c(x = "recall", y = "precision")
-)
+source("cifar_ood/curves_utils.R")
 
 plot_per_cp <- function(dir, dts, outputs_folder = "cifar_ood")
 {
-    net_files <- find_files_by_ptrn(
-        dir = dir,
-        ptrns = list(
-            roc = "net_msp_roc",
-            prc = "net_msp_prc")
-    )
-
-    load_curve <- function(file_info, file_col, nms)
-    {
-        curve <- read.csv(file.path(dir, file_info[file_col]))
-        for (name_i in seq_along(nms))
-        {
-            curve[names(nms)[[name_i]]] <- file_info[nms[[name_i]]]
-        }
-        return(curve)
-    }
-
-    load_curves <- function(files_info, file_col, nms)
-    {
-        curves <- apply(
-            files_info,
-            MARGIN = 1,
-            FUN = load_curve,
-            file_col = file_col,
-            nms = nms)
-
-        return(dplyr::bind_rows(curves))
-    }
-
-    nets_roc <- load_curves(files_info = net_files, file_col = "roc", nms = list(net = "net"))
-    nets_prc <- load_curves(files_info = net_files, file_col = "prc", nms = list(net = "net"))
-
-    pwc_files <- find_files_by_ptrn(
-        dir = dir,
-        ptrns = list(
-            pwc_msp_roc = "pwc_ens_msp_roc",
-            pwc_msp_prc = "pwc_ens_msp_prc",
-            pwc_unc_roc = "pwc_ens_unc_roc",
-            pwc_unc_prc = "pwc_ens_unc_prc"
-        )
-    )
-
-    pwc_files <- pwc_files %>% tidyr::pivot_longer(
-        cols = c(pwc_msp_roc, pwc_msp_prc, pwc_unc_roc, pwc_unc_prc),
-        names_to = c("det_met", "curve"),
-        names_pattern = "pwc_(.*?)_(.*?)$",
-        values_to = "file"
-    )
-
-    cal_files <- find_files_by_ptrn(
-        dir = dir,
-        ptrns = list(
-            cal_msp_roc = "cal_ens_msp_roc",
-            cal_msp_prc = "cal_ens_msp_prc"
-        )
-    )
-
-    cal_roc <- load_curves(
-                files_info = cal_files,
-                file_col = "cal_msp_roc",
-                nms = list(calibrating_method = "calibrating_method", nets = "nets"))
-    cal_prc <- load_curves(
-                files_info = cal_files,
-                file_col = "cal_msp_prc",
-                nms = list(calibrating_method = "calibrating_method", nets = "nets"))
+    net_curves <- get_net_curves(dir = dir)
+    cal_curves <- get_cal_curves(dir = dir)
+    pwc_files <- get_pwc_files(dir = dir)
 
     process_cp <- function(cp, outputs_folder)
     {
@@ -92,12 +23,13 @@ plot_per_cp <- function(dir, dts, outputs_folder = "cifar_ood")
         plot_curve <- function(comb, plotted_curve)
         {
             print(paste0("Processing combination ", comb["nets"]))
-            comb_nets <- get(paste0("nets_", plotted_curve)) %>% filter(net %in% stringr::str_split(comb["nets"], fixed("+"), simplify = TRUE))
-            comb_cal <- get(paste0("cal_", plotted_curve)) %>% filter(nets == comb["nets"])
+            comb_nets <- net_curves[[plotted_curve]] %>% filter(net %in% stringr::str_split(comb["nets"], fixed("+"), simplify = TRUE))
+            comb_cal <- cal_curves[[plotted_curve]] %>% filter(nets == comb["nets"])
             comb_pwc <- load_curves(
                 files_info = cp_pwc_files %>% filter(curve == plotted_curve, nets == comb["nets"]),
                 file_col = "file",
-                nms = list(combining_method = "combining_method", coupling_method = "coupling_method", det_met = "det_met"))
+                nms = list(combining_method = "combining_method", coupling_method = "coupling_method", det_met = "det_met"),
+                dir = dir)
 
             plot <-
                 ggplot() +
@@ -153,4 +85,3 @@ base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vs
 
 plot_per_cp(dir = base_dir_C10, dts = "C10vC100")
 plot_per_cp(dir = base_dir_C100, dts = "C100vC10")
-#MSP positive treba vyhodnotit inak a skontrolovcat ako bolo vyhodnotene v inych grafoch !
