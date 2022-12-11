@@ -36,7 +36,8 @@ load_ens_dfs <- function(base_dir, comb_methods = NULL)
         "cal_average", "cal_prob_average",
         "logreg", "logreg_sweep_C",
         "logreg_no_interc", "logreg_no_interc_sweep_C",
-        "grad_m1", "grad_m2", "grad_bc"
+        "grad_m1", "grad_m2", "grad_bc", "logreg_torch",
+        "random"
         )
         comb_methods <- c(sapply(X = comb_methods, FUN = {
         function(cm) c(cm, paste(cm, "uncert", sep = "."))
@@ -52,7 +53,7 @@ load_ens_dfs <- function(base_dir, comb_methods = NULL)
     return(list(ens_cal_plt_df, ens_pwc_plt_df))
 }
 
-plot_nets <- function(base_dir, cifar)
+plot_nets <- function(base_dir, dtset)
 {
     net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
     
@@ -72,7 +73,7 @@ plot_nets <- function(base_dir, cifar)
         theme(axis.text.x = element_text(angle = 90)) +
         ggtitle("Metriky sietí")
 
-    plot_name <- paste0("evaluation_sk/C", cifar, "_net_metrics.pdf")
+    plot_name <- paste0("evaluation_sk/C", dtset, "_net_metrics.pdf")
     ggsave(plot = nets_plot, filename = plot_name, device = cairo_pdf)
 }
 
@@ -483,6 +484,127 @@ plot_improvements <- function(base_dir, cifar, over = "best", comb_methods = NUL
     ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 15, height = 7)
 }
 
+plot_improvements_topls <- function(base_dir, dtset, over = "best", comb_methods = NULL)
+{
+    list[ens_cal_df, ens_pwc_df] <- load_ens_dfs(base_dir = base_dir, comb_methods = comb_methods)
+    ens_pwc_df$topl <- as.factor(ens_pwc_df$topl)
+    small_box_width <- 0.4
+    small_box_size <- 0.9
+    big_box_width <- length(levels(ens_pwc_df$topl))
+    big_box_x <- 1 + (length(levels(ens_pwc_df$topl)) - 1) / 2
+
+    for (co_m in unique(ens_pwc_df$combining_method))
+    {
+        ens_cal_plt_df <- ens_cal_df
+        ens_pwc_plt_df <- ens_pwc_df %>% filter(combining_method == co_m)
+        acc_plot <- ggplot() +
+        geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
+        geom_boxplot(
+            data = ens_cal_plt_df,
+            mapping = aes(y = !! sym(paste0("acc1_imp_", over)), color = "TemperatureScaling",
+                x = big_box_x),
+            width = big_box_width
+            ) +
+        (
+            geom_boxplot(
+            data = ens_pwc_plt_df,
+            mapping = aes(
+                x = topl, y = !! sym(paste0("acc1_imp_", over)),
+                colour2 = coupling_method
+            ),
+            size = small_box_size, width = small_box_width,
+            position = position_dodge(width = 0.65)
+            ) %>%
+            rename_geom_aes(new_aes = c("colour" = "colour2"))
+        ) +
+        scale_x_discrete() +
+        scale_colour_brewer(
+            aesthetics = "colour2", palette = 2,
+            name = "párová zväzovacia metóda", type = "qual"
+        ) +
+        ylab("presnosť") +
+        scale_color_manual(values = c("black"), name = "baseline") +
+        theme_classic() +
+        theme(
+            axis.text.x = element_text(angle = 90),
+            axis.title.x = element_blank()
+        )
+
+        nll_plot <- ggplot() +
+        geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
+        geom_boxplot(
+            data = ens_cal_plt_df,
+            mapping = aes(y = !! sym(paste0("nll_imp_", over)), color = "TemperatureScaling",
+                x = big_box_x),
+            width = big_box_width
+        ) +
+        (
+            geom_boxplot(
+            data = ens_pwc_plt_df,
+            mapping = aes(
+                x = topl, y = !! sym(paste0("nll_imp_", over)),
+                colour2 = coupling_method
+            ),
+            size = small_box_size, width = small_box_width,
+            position = position_dodge(width = 0.65)
+            ) %>%
+            rename_geom_aes(new_aes = c("colour" = "colour2"))
+        ) +
+        scale_x_discrete() +
+        scale_colour_brewer(
+            aesthetics = "colour2", palette = 2,
+            name = "párová zväzovacia metóda", type = "qual"
+        ) +
+        ylab("NLL") +
+        scale_color_manual(values = c("black"), name = "baseline") +
+        theme_classic() +
+        theme(
+            axis.text.x = element_text(angle = 90),
+            axis.title.x = element_blank()
+        )
+
+        ece_plot <- ggplot() +
+        geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
+        geom_boxplot(
+            data = ens_cal_plt_df,
+            mapping = aes(y = !! sym(paste0("ece_imp_", over)), color = "TemperatureScaling",
+                x = big_box_x),
+            width = big_box_width
+        ) +
+        (
+            geom_boxplot(
+            data = ens_pwc_plt_df,
+            mapping = aes(
+                x = topl, y = !! sym(paste0("ece_imp_", over)),
+                colour2 = coupling_method
+            ),
+            size = small_box_size, width = small_box_width,
+            position = position_dodge(width = 0.65)
+            ) %>%
+            rename_geom_aes(new_aes = c("colour" = "colour2"))
+        ) +
+        scale_colour_brewer(
+            aesthetics = "colour2", palette = 2,
+            name = "párová zväzovacia metóda", type = "qual"
+        ) +
+        ylab("ECE") +
+        xlab("kombinačná metóda") +
+        scale_color_manual(values = c("black"), name = "baseline") +
+        scale_x_discrete() +
+        theme_classic() +
+        theme(axis.text.x = element_text(angle = 90))
+
+        res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect") +
+            plot_annotation(title = paste0(
+                "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
+            )
+
+        plot_name <- paste0("evaluation_sk/", dtset, "_ensemble_improvements_over_", over, "_co_m_", co_m, ".pdf")
+        ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 15, height = 7)
+
+    }
+}
+
 plot_plots <- function(base_dir, cifar)
 {
     subs_comb_m <- c(
@@ -528,5 +650,5 @@ plot_plots <- function(base_dir, cifar)
 }
 
 
-plot_plots(base_dir = base_dir_C10, cifar = 10)
-plot_plots(base_dir = base_dir_C100, cifar = 100)
+#plot_plots(base_dir = base_dir_C10, cifar = 10)
+#plot_plots(base_dir = base_dir_C100, cifar = 100)
