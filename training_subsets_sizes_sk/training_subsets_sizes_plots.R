@@ -6,8 +6,10 @@ library(Cairo)
 metrics <- c("accuracy", "nll", "ece")
 metric_names <- c("presnosť", "NLL", "ECE")
 
-ens_metrics_c10 <- read.csv("../data/data_tv_5000_c10/0/exp_subsets_sizes_train_outputs/ens_metrics.csv", stringsAsFactors = TRUE)
-nets_metrics_c10 <- read.csv("../data/data_tv_5000_c10/0/exp_subsets_sizes_train_outputs/net_metrics.csv", stringsAsFactors = TRUE)
+ens_metrics_c10 <- read.csv(
+  "../../data/data_tv_5000_c10/0/exp_subsets_sizes_train_outputs/ens_metrics.csv", stringsAsFactors = TRUE)
+nets_metrics_c10 <- read.csv(
+  "../../data/data_tv_5000_c10/0/exp_subsets_sizes_train_outputs/net_metrics.csv", stringsAsFactors = TRUE)
 
 
 for (cp_m in unique(ens_metrics_c10$coupling_method))
@@ -23,8 +25,11 @@ for (cp_m in unique(ens_metrics_c10$coupling_method))
       scale_x_log10(breaks = log_breaks(n = 10)) +
       xlab("veľkosť trénovacej množiny") +
       ylab(metric_names[met_i]) +
-      ggtitle(paste0("Metrika ", metric_names[met_i], " pre rôzne veľkosti trénovacej množiny\npre pwcoup metódu ", toupper(cp_m))) +
-      theme_bw()
+      theme_bw() +
+      theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()
+      )
 
     plot_name <- paste0("training_subsets_sizes_sk/CIF10_", cp_m, "_", metric, ".pdf")
     ggsave(filename = plot_name, plot = box_plt, device = cairo_pdf)
@@ -32,8 +37,10 @@ for (cp_m in unique(ens_metrics_c10$coupling_method))
 }
 
 
-ens_metrics_c100 <- read.csv("../data/data_tv_5000_c100/0/exp_subsets_sizes_train_outputs/ens_metrics.csv", stringsAsFactors = TRUE)
-nets_metrics_c100 <- read.csv("../data/data_tv_5000_c100/0/exp_subsets_sizes_train_outputs/net_metrics.csv", stringsAsFactors = TRUE)
+ens_metrics_c100 <- read.csv(
+  "../../data/data_tv_5000_c100/0/exp_subsets_sizes_train_outputs/ens_metrics.csv", stringsAsFactors = TRUE)
+nets_metrics_c100 <- read.csv(
+  "../../data/data_tv_5000_c100/0/exp_subsets_sizes_train_outputs/net_metrics.csv", stringsAsFactors = TRUE)
 
 
 for (cp_m in unique(ens_metrics_c100$coupling_method))
@@ -47,8 +54,13 @@ for (cp_m in unique(ens_metrics_c100$coupling_method))
       geom_boxplot(mapping = aes_string(x = "train_size", y = metric, group = "train_size")) +
       facet_grid(rows = vars(combining_method), scales = "free") +
       scale_x_log10(breaks = log_breaks(n = 10)) +
-      ggtitle(paste0("Metrika ", metric_names[met_i], " pre rôzne veľkosti trénovacej množiny\npre pwcoup metódu ", toupper(cp_m))) +
-      theme_bw()
+      xlab("veľkosť trénovacej množiny") +
+      ylab(metric_names[met_i]) +
+      theme_bw() +
+      theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()
+      )
 
     plot_name <- paste0("training_subsets_sizes_sk/CIF100_", cp_m, "_", metric, ".pdf")
     ggsave(filename = plot_name, plot = box_plt, device = cairo_pdf)
