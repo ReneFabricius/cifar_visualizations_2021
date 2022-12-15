@@ -7,15 +7,14 @@ library(Cairo)
 metrics <- c("accuracy", "nll", "ece")
 metric_names <- c("presnosť", "NLL", "ECE")
 metrics_opt <- c("max", "min", "min")
-
 # CIFAR10
 
 net_results_c10 <- read.csv(
-    "../data/data_train_val_half_c10/net_metrics.csv",
+    "../../data/data_train_val_half_c10/net_metrics.csv",
     stringsAsFactors = TRUE
 )
 ens_results_c10 <- read.csv(
-    "../data/data_train_val_half_c10/ensemble_metrics.csv",
+    "../../data/data_train_val_half_c10/ensemble_metrics.csv",
     stringsAsFactors = TRUE
 )
 
@@ -28,8 +27,9 @@ for (comb_id in unique(ens_results_c10$combination_id))
         filter(combination_id == comb_id)
     comb_nets <- gsub(
         "\\.", "_",
-        net_cols[as.logical(cur_comb_ens_results[1, net_cols])]
+        net_cols[as.logical(t(cur_comb_ens_results[1, net_cols]))]
     )
+    
     for (met_i in seq_along(metrics))
     {
         box_plot <- cur_comb_ens_results %>% ggplot() +
@@ -45,9 +45,7 @@ for (comb_id in unique(ens_results_c10$combination_id))
             ) +
             ggtitle(paste0(
                 "CIFAR-10. Metrika ", metric_names[met_i],
-                "ansámblov s kombinačnými metódami\n
-                natrénovanými na rôznych trénovacích množinách.\n
-                Kombinované siete: ",
+                " ansámblov s kombinačnými metódami\nnatrénovanými na rôznych trénovacích množinách.\nKombinované siete: ",
                 paste(comb_nets, collapse = " ")
             )) +
             xlab("trénovacia množina") +
@@ -57,7 +55,10 @@ for (comb_id in unique(ens_results_c10$combination_id))
                 labels = c("trénovacia", "validačná")
             ) +
             theme_bw() +
-            theme(axis.text.x = element_blank())
+            theme(
+                axis.text.x = element_blank(),
+                panel.grid.major = element_blank(),
+                panel.grid.minor = element_blank())
 
         plot_name <- paste0(
             "val_vs_train_training_sk/CIFAR-10_",
@@ -124,14 +125,18 @@ for (co_m in unique(ens_results_c10$combining_method))
                 }
             }
             tests_df[
-                which(tests_df$combining_method == co_m & tests_df$coupling_method == cp_m & tests_df$metric == metrics[met_i]),
+                which(tests_df$combining_method == co_m & 
+                tests_df$coupling_method == cp_m & 
+                tests_df$metric == metrics[met_i]),
                 c("val_win", "train_win", "indecisive", "nans")
             ] <- test_res
         }
     }
 }
 
-tests_df_longer <- pivot_longer(data = tests_df, cols = c("val_win", "train_win", "indecisive", "nans"), names_to = "result", values_to = "count")
+tests_df_longer <- pivot_longer(
+    data = tests_df, cols = c("val_win", "train_win", "indecisive", "nans"),
+    names_to = "result", values_to = "count")
 for (met_i in seq_along(metrics))
 {
     col_plot <- tests_df_longer %>%
@@ -139,7 +144,6 @@ for (met_i in seq_along(metrics))
         ggplot() +
         geom_col(mapping = aes(x = result, y = count, fill = result)) +
         facet_grid(rows = vars(combining_method), cols = vars(coupling_method)) +
-        ggtitle(paste0("CIFAR-10. Výsledky štatistického testu pre metriku ", metric_names[met_i])) +
         xlab("výsledok") +
         ylab("počet") +
         scale_fill_brewer(
@@ -150,7 +154,9 @@ for (met_i in seq_along(metrics))
         ) +
         theme_bw() +
         theme(
-            axis.text.x = element_blank()
+            axis.text.x = element_blank(),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank()
         )
 
     plot_name <- paste0("val_vs_train_training_sk/CIFAR-10_", metrics[met_i], "_test.pdf")
@@ -174,14 +180,13 @@ for (met_i in seq_along(metrics))
         geom_density(mapping = aes_string(x = paste0(metrics[met_i], "_vt_sub_tt"), y = "..scaled..")) +
         geom_vline(xintercept = 0.0, color = "red", linetype = "dashed") +
         facet_grid(combining_method ~ coupling_method, scales = "free") +
-        ggtitle(paste0(
-            "CIFAR-10\nRozdelenie rozdielov v priemere metriky ", metric_names[met_i],
-            "\nmedzi ansámblami natrénovanými na validačnej a na trénovacej množine"
-        )) +
         xlab(paste0("rozdiel v metrike ", metric_names[met_i])) +
         ylab("škálovaná hustota") +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 90))
+        theme(
+            axis.text.x = element_text(angle = 90),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())
 
     plot_name <- paste0("val_vs_train_training_sk/CIFAR-10_", metrics[met_i], "_diff.pdf")
     ggsave(filename = plot_name, plot = dens_plt, device = cairo_pdf)
@@ -189,15 +194,15 @@ for (met_i in seq_along(metrics))
 
 
 # CIFAR100
-net_results_c100 <- read.csv("../data/data_train_val_half_c100/net_metrics.csv", stringsAsFactors = TRUE)
-ens_results_c100 <- read.csv("../data/data_train_val_half_c100/ensemble_metrics.csv", stringsAsFactors = TRUE)
+net_results_c100 <- read.csv("../../data/data_train_val_half_c100/net_metrics.csv", stringsAsFactors = TRUE)
+ens_results_c100 <- read.csv("../../data/data_train_val_half_c100/ensemble_metrics.csv", stringsAsFactors = TRUE)
 ens_results_c100$coupling_method <- toupper(ens_results_c100$coupling_method)
 net_cols <- gsub("-", ".", unique(net_results_c100$network))
 
 for (comb_id in unique(ens_results_c100$combination_id))
 {
     cur_comb_ens_results <- ens_results_c100 %>% filter(combination_id == comb_id)
-    comb_nets <- gsub("\\.", "_", net_cols[as.logical(cur_comb_ens_results[1, net_cols])])
+    comb_nets <- gsub("\\.", "_", net_cols[as.logical(t(cur_comb_ens_results[1, net_cols]))])
     for (met_i in seq_along(metrics))
     {
         box_plot <- cur_comb_ens_results %>% ggplot() +
@@ -205,14 +210,18 @@ for (comb_id in unique(ens_results_c100$combination_id))
             facet_grid(rows = vars(combining_method), cols = vars(coupling_method), scales = "free") +
             ggtitle(paste0(
                 "CIFAR-100. Metrika ", metric_names[met_i],
-                "ansámblov s kombinačnými metódami\nnatrénovanými na rôznych trénovacích množinách.\nKombinované siete: ",
+                " ansámblov s kombinačnými metódami\nnatrénovanými na rôznych trénovacích množinách.\nKombinované siete: ",
                 paste(comb_nets, collapse = " ")
             )) +
             scale_fill_discrete(name = "trénovacia množina", labels = c("trénovacia", "validačná")) +
             theme_bw() +
-            theme(axis.text.x = element_blank())
+            theme(
+                axis.text.x = element_blank(),
+                panel.grid.major = element_blank(),
+                panel.grid.minor = element_blank())
 
-        plot_name <- paste0("val_vs_train_training_sk/CIFAR-100_", metrics[met_i], "_", paste(comb_nets, collapse = "_"), ".pdf")
+        plot_name <- paste0(
+            "val_vs_train_training_sk/CIFAR-100_", metrics[met_i], "_", paste(comb_nets, collapse = "_"), ".pdf")
         ggsave(filename = plot_name, plot = box_plot, device = cairo_pdf)
     }
 }
@@ -275,7 +284,6 @@ for (met_i in seq_along(metrics))
         ggplot() +
         geom_col(mapping = aes(x = result, y = count, fill = result)) +
         facet_grid(rows = vars(combining_method), cols = vars(coupling_method)) +
-        ggtitle(paste0("CIFAR-100. Výsledky štatistického testu pre metriku ", metric_names[met_i])) +
         xlab("výsledok") +
         ylab("počet") +
         scale_fill_brewer(
@@ -286,7 +294,9 @@ for (met_i in seq_along(metrics))
         ) +
         theme_bw() +
         theme(
-            axis.text.x = element_blank()
+            axis.text.x = element_blank(),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank()
         )
 
     plot_name <- paste0("val_vs_train_training_sk/CIFAR-100_", metrics[met_i], "_test.pdf")
@@ -310,14 +320,13 @@ for (met_i in seq_along(metrics))
         geom_density(mapping = aes_string(x = paste0(metrics[met_i], "_vt_sub_tt"), y = "..scaled..")) +
         geom_vline(xintercept = 0.0, color = "red", linetype = "dashed") +
         facet_grid(combining_method ~ coupling_method, scales = "free") +
-        ggtitle(paste0(
-            "CIFAR-100\nRozdelenie rozdielov v priemere metriky ", metric_names[met_i],
-            "\nmedzi ansámblami natrénovanými na validačnej a na trénovacej množine"
-        )) +
         xlab(paste0("rozdiel v metrike ", metric_names[met_i])) +
         ylab("škálovaná hustota") +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 90))
+        theme(
+            axis.text.x = element_text(angle = 90),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())
 
     plot_name <- paste0("val_vs_train_training_sk/CIFAR-100_", metrics[met_i], "_diff.pdf")
     ggsave(filename = plot_name, plot = dens_plt, device = cairo_pdf)
