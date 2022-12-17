@@ -56,13 +56,12 @@ load_ens_dfs <- function(base_dir, comb_methods = NULL)
 plot_nets <- function(base_dir, dtset)
 {
     net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
-    
+
     net_long <- pivot_longer(
         net_df,
         cols = c("accuracy", "nll", "ece"),
         names_to = "metric", values_to = "value"
     )
-
 
     nets_plot <- ggplot(data = net_long) +
         geom_col(mapping = aes(x = network, y = value)) +
@@ -77,16 +76,33 @@ plot_nets <- function(base_dir, dtset)
     ggsave(plot = nets_plot, filename = plot_name, device = cairo_pdf)
 }
 
-plot_ensembles <- function(base_dir, cifar)
+plot_ensembles <- function(base_dir, dtset, co_m_subset = NULL, constit_num = NULL, cust_name = NULL, size = NULL)
 {
-
     net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
 
     networks <- net_df$network
 
     list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir)
 
-    for (sss in max(ens_cal_plt_df$combination_size))
+    if (!is.null(co_m_subset))
+    {
+        ens_pwc_plt_df <- ens_pwc_plt_df %>% filter(combining_method %in% co_m_subset)
+    }
+
+    hp_line_width <- 0.11
+    hp_line_size <- 0.8
+    hp_line_dodge <- 0.65
+
+    if (is.null(constit_num))
+    {
+        iter_cons_num <- unique(ens_cal_plt_df$combination_size)
+    }
+    else 
+    {
+        iter_cons_num <- constit_num
+    }
+
+    for (sss in iter_cons_num)
     {
         for (ssi in unique(ens_cal_plt_df %>%
             filter(combination_size == sss) %>%
@@ -96,14 +112,9 @@ plot_ensembles <- function(base_dir, cifar)
             combination_id == ssi)
             cur_ens_pwc <- ens_pwc_plt_df %>% filter(combination_size == sss &
             combination_id == ssi)
-            cur_nets_vec <- to_vec(
-            for (net in networks) {
-                if (str_replace_all(net, "-", ".") %in% colnames(cur_ens_cal) &&
-                cur_ens_cal[[str_replace_all(net, "-", ".")]][1] == "True") {
-                net
-                }
-            }
-            )
+            cur_nets_mask <- as.logical(t(cur_ens_cal[1, str_replace_all(networks, "-", ".")]))
+            cur_nets_vec <- networks[cur_nets_mask]
+            print(cur_nets_vec)
             cur_nets <- net_df %>% filter(network %in% cur_nets_vec)
 
             acc_plot <- ggplot() +
@@ -120,14 +131,14 @@ plot_ensembles <- function(base_dir, cifar)
                 mapping = aes(yintercept = accuracy, color = "TemperatureScaling")
             ) +
             (
-                geom_hpline(
+                geom_hopline(
                 data = cur_ens_pwc,
                 mapping = aes(
                     x = combining_method, y = accuracy,
                     colour2 = coupling_method
                 ),
-                size = 0.8, width = 0.11,
-                position = position_dodge(width = 0.65)
+                linewidth = hp_line_size, width = hp_line_width,
+                position = position_dodge(width = hp_line_dodge)
                 ) %>%
                 rename_geom_aes(new_aes = c("colour" = "colour2"))
             ) +
@@ -148,7 +159,7 @@ plot_ensembles <- function(base_dir, cifar)
                 axis.title.x = element_blank()
             )
 
-            if (cifar == 100)
+            if (dtset == "C100")
             {
                 acc_plot <- acc_plot + coord_cartesian(ylim = c(0.75, 0.87))
             }
@@ -171,14 +182,14 @@ plot_ensembles <- function(base_dir, cifar)
                 mapping = aes(yintercept = nll, color = "TemperatureScaling")
             ) +
             (
-                geom_hpline(
+                geom_hopline(
                 data = cur_ens_pwc,
                 mapping = aes(
                     x = combining_method, y = nll,
                     colour2 = coupling_method
                 ),
-                size = 0.8, width = 0.11,
-                position = position_dodge(width = 0.65)
+                linewidth = hp_line_size, width = hp_line_width,
+                position = position_dodge(width = hp_line_dodge)
                 ) %>%
                 rename_geom_aes(new_aes = c("colour" = "colour2"))
             ) +
@@ -200,14 +211,15 @@ plot_ensembles <- function(base_dir, cifar)
                 axis.title.x = element_blank()
             )
 
-            nums <- c(1:length(unique(cur_ens_pwc$combining_method)))
-            names(nums) <- levels(cur_ens_pwc$combining_method)
-            max_len <- max(unlist(lapply(X = levels(cur_ens_pwc$combining_method), FUN = nchar)))
+            present_co_m <- levels(droplevels(cur_ens_pwc$combining_method))
+            nums <- c(1:length(present_co_m))
+            names(nums) <- present_co_m
+            max_len <- max(unlist(lapply(X = present_co_m, FUN = nchar)))
             x_labs <- lapply(
                 X = nums,
                 FUN = function(i) paste0(str_pad(
-                    string = levels(cur_ens_pwc$combining_method)[i],
-                    width = 1.8 * max_len - 0.8 * nchar(levels(cur_ens_pwc$combining_method)[i]) + 4,
+                    string = present_co_m[i],
+                    width = 1.8 * max_len - 0.8 * nchar(present_co_m[i]) + 4,
                     side = "both",
                     pad = " "), i))
 
@@ -225,14 +237,14 @@ plot_ensembles <- function(base_dir, cifar)
                 mapping = aes(yintercept = ece, color = "TemperatureScaling")
             ) +
             (
-                geom_hpline(
+                geom_hopline(
                 data = cur_ens_pwc,
                 mapping = aes(
                     x = combining_method, y = ece,
                     colour2 = coupling_method
                 ),
-                size = 0.8, width = 0.11,
-                position = position_dodge(width = 0.65)
+                linewidth = hp_line_size, width = hp_line_width,
+                position = position_dodge(width = hp_line_dodge)
                 ) %>%
                 rename_geom_aes(new_aes = c("colour" = "colour2"))
             ) +
@@ -252,8 +264,11 @@ plot_ensembles <- function(base_dir, cifar)
             theme_classic() +
             theme(axis.text.x = element_text(angle = 90))
 
-            res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect") +
-                plot_annotation(title = paste(
+            res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect")
+
+            if (is.null(cust_name))
+            {
+                res_plot <- res_plot + plot_annotation(title = paste(
                     "Metriky ansámblov",
                     paste(
                     c("Nekonzistencia chýb", signif(cur_ens_cal$err_incons[[1]], 5)),
@@ -265,9 +280,20 @@ plot_ensembles <- function(base_dir, cifar)
                     ),
                     sep = "\n"
                 ))
+            }
 
-            plot_name <- paste0("evaluation_sk/C", cifar, "_ensemble_metrics.pdf")
-            ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf)
+            if (is.null(cust_name))
+            {
+                plot_name <- paste0(
+                    "evaluation_sk/", dtset, "_ensemble_metrics_",
+                    paste(cur_nets_vec, collapse = "+"), ".pdf")
+
+            }
+            else
+            {
+                plot_name <- paste0("evaluation_sk/", cust_name)
+            }
+            ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = size[1], height = size[2])
         }
     }
 }
@@ -354,7 +380,7 @@ comp_tables <- function(base_dir, cifar)
     write.csv(avg_imp_table, file = table_name, row.names = FALSE, na = "")
 }
 
-plot_improvements <- function(base_dir, cifar, over = "best", comb_methods = NULL)
+plot_improvements <- function(base_dir, dtset, over = "best", comb_methods = NULL)
 {
     list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir, comb_methods = comb_methods)
     small_box_width <- 0.4
@@ -395,7 +421,7 @@ plot_improvements <- function(base_dir, cifar, over = "best", comb_methods = NUL
         axis.title.x = element_blank()
     )
 
-    if (cifar == 100)
+    if (dtset == "C100")
     {
         acc_plot <- acc_plot + coord_cartesian(ylim = c(-0.1, 0.1))
     }
@@ -480,7 +506,7 @@ plot_improvements <- function(base_dir, cifar, over = "best", comb_methods = NUL
             "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
         )
 
-    plot_name <- paste0("evaluation_sk/C", cifar, "_ensemble_improvements_over_", over, ".pdf")
+    plot_name <- paste0("evaluation_sk/", dtset, "_ensemble_improvements_over_", over, ".pdf")
     ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 15, height = 7)
 }
 
@@ -641,11 +667,11 @@ plot_plots <- function(base_dir, cifar)
     subs <- list("10" = subs_c10, "100" = subs_c100)
 
     plot_nets(base_dir = base_dir, cifar = cifar)
-    plot_ensembles(base_dir = base_dir, cifar = cifar)
+    plot_ensembles(base_dir = base_dir, dtset = paste0("C", cifar))
     plot_dependencies(base_dir = base_dir, cifar = cifar)
     comp_tables(base_dir = base_dir, cifar = cifar)
     plot_improvements(
-        base_dir = base_dir, cifar = cifar,
+        base_dir = base_dir, dtset = paste0("C", cifar),
         comb_methods = subs[[as.character(cifar)]])
 }
 
