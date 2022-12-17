@@ -32,25 +32,25 @@ plot_det_metrics <- function(dir, dts)
             rename_geom_aes(new_aes = c("colour" = "colour1"))
         ) +
         (
-            geom_hpline(
+            geom_hopline(
             data = cur_mets,
             mapping = aes(
                 x = coupling_method, y = MSP_AUROC,
                 colour2 = "MSP"
             ),
-            size = 0.8, width = 0.11,
+            linewidth = 0.8, width = 0.11,
             position = position_dodge(width = 0.65)
             ) %>%
             rename_geom_aes(new_aes = c("colour" = "colour2"))
         ) +
         (
-            geom_hpline(
+            geom_hopline(
             data = cur_mets,
             mapping = aes(
                 x = coupling_method, y = UNC_AUROC,
                 colour2 = "UNC"
             ),
-            size = 0.8, width = 0.11,
+            linewidth = 0.8, width = 0.11,
             position = position_dodge(width = 0.65)
             ) %>%
             rename_geom_aes(new_aes = c("colour" = "colour2"))
@@ -78,25 +78,25 @@ plot_det_metrics <- function(dir, dts)
             rename_geom_aes(new_aes = c("colour" = "colour1"))
         ) +
         (
-            geom_hpline(
+            geom_hopline(
             data = cur_mets,
             mapping = aes(
                 x = coupling_method, y = MSP_AUPRC,
                 colour2 = "MSP"
             ),
-            size = 0.8, width = 0.11,
+            linewidth = 0.8, width = 0.11,
             position = position_dodge(width = 0.65)
             ) %>%
             rename_geom_aes(new_aes = c("colour" = "colour2"))
         ) +
         (
-            geom_hpline(
+            geom_hopline(
             data = cur_mets,
             mapping = aes(
                 x = coupling_method, y = UNC_AUPRC,
                 colour2 = "UNC"
             ),
-            size = 0.8, width = 0.11,
+            linewidth = 0.8, width = 0.11,
             position = position_dodge(width = 0.65)
             ) %>%
             rename_geom_aes(new_aes = c("colour" = "colour2"))

@@ -157,13 +157,13 @@ for (sss in unique(ens_cal_plt_df$combination_size))
         mapping = aes(yintercept = accuracy, color = "cal ensemble")
       ) +
       (
-        geom_hpline(
+        geom_hopline(
           data = cur_ens_pwc,
           mapping = aes(
             x = combining_method, y = accuracy,
             colour2 = coupling_method
           ),
-          size = 0.8, width = 0.11,
+          linewidth = 0.8, width = 0.11,
           position = position_dodge(width = 0.65)
         ) %>%
           rename_geom_aes(new_aes = c("colour" = "colour2"))
@@ -225,13 +225,13 @@ for (sss in unique(ens_cal_plt_df$combination_size))
         mapping = aes(yintercept = nll, color = "cal ensemble")
       ) +
       (
-        geom_hpline(
+        geom_hopline(
           data = cur_ens_pwc,
           mapping = aes(
             x = combining_method, y = nll,
             colour2 = coupling_method
           ),
-          size = 0.8, width = 0.11,
+          linewidth = 0.8, width = 0.11,
           position = position_dodge(width = 0.65)
         ) %>%
           rename_geom_aes(new_aes = c("colour" = "colour2"))
@@ -265,13 +265,13 @@ for (sss in unique(ens_cal_plt_df$combination_size))
         mapping = aes(yintercept = ece, color = "cal ensemble")
       ) +
       (
-        geom_hpline(
+        geom_hopline(
           data = cur_ens_pwc,
           mapping = aes(
             x = combining_method, y = ece,
             colour2 = coupling_method
           ),
-          size = 0.8, width = 0.11,
+          linewidth = 0.8, width = 0.11,
           position = position_dodge(width = 0.65)
         ) %>%
           rename_geom_aes(new_aes = c("colour" = "colour2"))
