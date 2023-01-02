@@ -380,7 +380,9 @@ comp_tables <- function(base_dir, cifar)
     write.csv(avg_imp_table, file = table_name, row.names = FALSE, na = "")
 }
 
-plot_improvements <- function(base_dir, dtset, over = "best", comb_methods = NULL)
+plot_improvements <- function(
+    base_dir, dtset, over = "best", comb_methods = NULL,
+    size = NULL, acc_lim = NULL, nll_lim = NULL, ece_lim = NULL)
 {
     list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir, comb_methods = comb_methods)
     small_box_width <- 0.4
@@ -421,9 +423,9 @@ plot_improvements <- function(base_dir, dtset, over = "best", comb_methods = NUL
         axis.title.x = element_blank()
     )
 
-    if (dtset == "C100")
+    if (!is.null(acc_lim))
     {
-        acc_plot <- acc_plot + coord_cartesian(ylim = c(-0.1, 0.1))
+        acc_plot <- acc_plot + coord_cartesian(ylim = acc_lim)
     }
 
     nll_plot <- ggplot() +
@@ -458,6 +460,11 @@ plot_improvements <- function(base_dir, dtset, over = "best", comb_methods = NUL
         axis.text.x = element_text(angle = 90),
         axis.title.x = element_blank()
     )
+
+    if (!is.null(nll_lim))
+    {
+        nll_plot <- nll_plot + coord_cartesian(ylim = nll_lim)
+    }
 
     nums <- c(1:length(unique(ens_pwc_plt_df$combining_method)))
     names(nums) <- levels(ens_pwc_plt_df$combining_method)
@@ -501,13 +508,18 @@ plot_improvements <- function(base_dir, dtset, over = "best", comb_methods = NUL
     theme_classic() +
     theme(axis.text.x = element_text(angle = 90))
 
-    res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect") +
-        plot_annotation(title = paste0(
-            "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
-        )
+    if (!is.null(ece_lim))
+    {
+        ece_plot <- ece_plot + coord_cartesian(ylim = ece_lim)
+    }
+
+    res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect") #+
+        #plot_annotation(title = paste0(
+        #    "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
+        #)
 
     plot_name <- paste0("evaluation_sk/", dtset, "_ensemble_improvements_over_", over, ".pdf")
-    ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 15, height = 7)
+    ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = size[1], height = size[2])
 }
 
 plot_improvements_topls <- function(base_dir, dtset, over = "best", comb_methods = NULL)
