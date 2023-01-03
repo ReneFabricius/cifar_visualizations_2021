@@ -5,6 +5,7 @@ library(namedCapture)
 library(dplyr)
 library(purrr)
 library(reshape2)
+library(ggplot2)
 np <- import("numpy")
 
 

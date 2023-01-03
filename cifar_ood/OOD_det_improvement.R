@@ -10,6 +10,7 @@ library(xtable)
 library(namedCapture)
 library(reticulate)
 library(Rfast)
+library(Cairo)
 
 plot_improvements <- function(dir, dts)
 {
@@ -66,9 +67,10 @@ plot_improvements <- function(dir, dts)
             names_pattern = "CAL_MSP_o_max_MSP_(.*?)$"
         )
 
-    au_imps_pwc$coupling_method <- as.factor(toupper(au_imps_pwc$coupling_method))
+    # au_imps_pwc$coupling_method <- as.factor(toupper(au_imps_pwc$coupling_method))
     au_imps_pwc$combining_method <- as.factor(au_imps_pwc$combining_method)
     au_imps_pwc <- au_imps_pwc %>% dplyr::mutate(
+        coupling_method = as.factor(coupling_method),
         combining_method = dplyr::recode(combining_method, logreg_torch = "logreg"))
 
 
@@ -79,7 +81,7 @@ plot_improvements <- function(dir, dts)
         {
             au_imps_pwc_print <- au_imps_pwc_print %>% filter(
                 combining_method == "logreg",
-                coupling_method != "BC")
+                coupling_method != "bc")
         }
 
         big_box_width <- length(unique(au_imps_pwc_print$coupling_method))
@@ -98,23 +100,43 @@ plot_improvements <- function(dir, dts)
                         y = value,
                         color = paste0("WLE ", ifelse(ood_method == "UNC", "neistota", "MSP"))),
                         position = "dodge") +
-                geom_hline(yintercept = 0.0, color = "red", linetype = "dashed", alpha = 0.5) +
+                geom_hline(yintercept = 0.0, color = "red", linetype = "dashed", alpha = 0.7) +
                 facet_grid(combining_method ~ metric) +
                 scale_color_brewer(type = "qual", palette = 2, name = "metóda detekcie") +
                 ylab(paste0("zlepšenie")) +
-                theme_bw()
+                theme_bw() +
+                theme(
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank())
 
         plot <- plot + coord_cartesian(ylim = c(ifelse(ood_method == "UNC", -0.2, -0.025), ifelse(ood_method == "UNC", 0.03, 0.04)))
         ggsave(
             filename = file.path("cifar_ood", paste0(dts, "_", ood_method, "_au_improvements.pdf")),
-            plot = plot
+            plot = plot,
+            device = cairo_pdf
         )
+
+        return(plot)
     }
-    plot_metric("ENS")
-    plot_metric("UNC")
+    ens_plot <- plot_metric("ENS")
+    unc_plot <- plot_metric("UNC")
+
+    return(list(ens_plot, unc_plot))
 }
 
-base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
-base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
-plot_improvements(base_dir_C10, "C10vC100")
-plot_improvements(base_dir_C100, "C100vC10")
+base_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
+base_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
+c10vc100_plots <- plot_improvements(base_dir_C10, "C10vC100")
+c100vc10_plots <- plot_improvements(base_dir_C100, "C100vC10")
+
+unc_10v100 <- c10vc100_plots[[2]]
+unc_100v10 <- c100vc10_plots[[2]]
+
+unc_plot <- (unc_10v100 | unc_100v10) + plot_layout(guides = "collect")
+ggsave(
+    filename = file.path("cifar_ood", "both_unc_au_improvements.pdf"),
+    plot = unc_plot,
+    device = cairo_pdf,
+    width = 7,
+    height = 3
+)

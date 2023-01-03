@@ -16,11 +16,11 @@ source("cifar_ood/curves_utils.R")
 
 np <- import("numpy")
 
-C10_labels <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100/B16/test_labels.npy"
-C100_labels <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10/B16/test_labels.npy"
-cifar_data <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/cifar_data"
+C10_labels <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100/B16/test_labels.npy"
+C100_labels <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10/B16/test_labels.npy"
+cifar_data <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/cifar_data"
 
-plot_select_configs <- function(dir, dts, sel_configs, outputs_folder = "cifar_ood\\print")
+plot_select_configs <- function(dir, dts, sel_configs, outputs_folder = "cifar_ood/print")
 {
     files <- find_files_by_ptrn(dir = dir, ptrn = list(
         unc_ind = "pwc_ens_test_unc",
@@ -107,8 +107,7 @@ plot_select_configs <- function(dir, dts, sel_configs, outputs_folder = "cifar_o
                 combining_method == x$config["combining_method"],
                 coupling_method == x$config["coupling_method"],
                 nets == x$config["nets"]) %>% mutate(
-                coupling_method = toupper(coupling_method),
-                combining_method = recode(combining_method, logreg_torch = "logreg"))
+                    combining_method = recode(combining_method, logreg_torch = "logreg"))
 
             plot <-
                 ggplot() +
@@ -141,7 +140,7 @@ plot_select_configs <- function(dir, dts, sel_configs, outputs_folder = "cifar_o
                     aesthetics = "comb_col", palette = 2,
                     name = "Kombinačná metóda", type = "qual") +
                 scale_color_manual(values = c("black"), name = "baseline") +
-                scale_linetype(name = "Metóda detekcie") +
+                scale_linetype_manual(name = "Metóda detekcie", values = c("solid", "dotted")) +
                 theme_classic()
 
             ggsave(
@@ -192,8 +191,8 @@ conf_100v10 <- list(
     )
 )
 
-base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
-base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
+base_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
+base_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
 
 plot_select_configs(base_dir_C10, dts = "C10vC100", sel_configs = conf_10v100)
 plot_select_configs(base_dir_C100, dts = "C100vC10", sel_configs = conf_100v10)
