@@ -10,15 +10,15 @@ metrics_opt <- c("max", "min", "min")
 # CIFAR10
 
 net_results_c10 <- read.csv(
-    "../../data/data_train_val_half_c10/net_metrics.csv",
+    "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_train_val_half_c10/net_metrics.csv",
     stringsAsFactors = TRUE
 )
 ens_results_c10 <- read.csv(
-    "../../data/data_train_val_half_c10/ensemble_metrics.csv",
+    "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_train_val_half_c10/ensemble_metrics.csv",
     stringsAsFactors = TRUE
 )
 
-ens_results_c10$coupling_method <- toupper(ens_results_c10$coupling_method)
+# ens_results_c10$coupling_method <- toupper(ens_results_c10$coupling_method)
 net_cols <- gsub("-", ".", unique(net_results_c10$network))
 
 for (comb_id in unique(ens_results_c10$combination_id))
@@ -194,9 +194,13 @@ for (met_i in seq_along(metrics))
 
 
 # CIFAR100
-net_results_c100 <- read.csv("../../data/data_train_val_half_c100/net_metrics.csv", stringsAsFactors = TRUE)
-ens_results_c100 <- read.csv("../../data/data_train_val_half_c100/ensemble_metrics.csv", stringsAsFactors = TRUE)
-ens_results_c100$coupling_method <- toupper(ens_results_c100$coupling_method)
+net_results_c100 <- read.csv(
+    "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_train_val_half_c100/net_metrics.csv",
+    stringsAsFactors = TRUE)
+ens_results_c100 <- read.csv(
+    "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_train_val_half_c100/ensemble_metrics.csv",
+    stringsAsFactors = TRUE)
+# ens_results_c100$coupling_method <- toupper(ens_results_c100$coupling_method)
 net_cols <- gsub("-", ".", unique(net_results_c100$network))
 
 for (comb_id in unique(ens_results_c100$combination_id))
