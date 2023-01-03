@@ -13,10 +13,10 @@ library(scales)
 
 source("utils.R")
 
-base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/grad_glob_sweep_C"
-base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/grad_glob_sweep_C"
-eval_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
-eval_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
+base_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/grad_glob_sweep_C"
+base_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/grad_glob_sweep_C"
+eval_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
+eval_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
 
 
 plot_plots <- function(base_dir, eval_dir, cifar)
@@ -63,17 +63,23 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     ggplot() +
                     geom_boxplot(mapping = aes_string(x = "C", y = paste0(met, "_imp_avg"), group = "C")) +
                     geom_hline(data = ens_eval_df_pwc, mapping = aes_string(yintercept = paste0(met, "_imp_o_avg_median"),
-                                                                            color = shQuote("median without regularization"))) +
+                                                                            color = shQuote("medián bez regularizácie"))) +
                     facet_rep_grid(method ~ ., repeat.tick.labels = TRUE, scales = "free_x") +
                     scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
                     coord_cartesian(ylim = limits[[met]][[as.character(cifar)]]) +
+                    ylab(paste0("Zlepšenie metriky ", metric_names[met_i], " oproti priemeru sietí")) +
+                    scale_colour_discrete(name = "") +
                     ggtitle(paste0("Cifar ", cifar)) +
                     theme_bw() +
-                    theme(axis.line = element_line())
+                    theme(
+                        axis.text.x = element_text(angle = 90),
+                        panel.grid.major = element_blank(),
+                        panel.grid.minor = element_blank())
+
 
         file_name <- paste0("grad_reg_c", cifar, "_", met, ".pdf")
-        ggsave(filename = file.path("grad_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 40)
-        dev.off()
+        ggsave(filename = file.path("grad_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf, height = 40)
+        #dev.off()
 
         metric_plot <- ens_df_pwc %>% filter(str_split(method, pattern = fixed(" + "), simplify = TRUE)[, 1] == "grad_m2") %>%
                     ggplot() +
@@ -87,11 +93,15 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     ylab(paste0("Zlepšenie metriky ", metric_names[met_i], " oproti priemeru sietí")) +
                     scale_colour_discrete(name = "") +
                     theme_bw() +
-                    theme(axis.line = element_line())
+                    theme(
+                        axis.text.x = element_text(angle = 90),
+                        panel.grid.major = element_blank(),
+                        panel.grid.minor = element_blank())
+
 
         file_name <- paste0("print_grad_reg_c", cifar, "_", met, ".pdf")
-        ggsave(filename = file.path("grad_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf(), height = 6)
-        dev.off()
+        ggsave(filename = file.path("grad_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf, height = 6)
+        #dev.off()
     }
 }
 
