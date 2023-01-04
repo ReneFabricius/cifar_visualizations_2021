@@ -632,13 +632,13 @@ plot_improvements_topls <- function(base_dir, dtset, over = "best", comb_methods
         theme_classic() +
         theme(axis.text.x = element_text(angle = 90))
 
-        res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect") +
-            plot_annotation(title = paste0(
-                "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
-            )
+        res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect") # +
+            #plot_annotation(title = paste0(
+            #    "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
+            #)
 
-        plot_name <- paste0("evaluation_sk/", dtset, "_ensemble_improvements_over_", over, "_co_m_", co_m, ".pdf")
-        ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 15, height = 7)
+        plot_name <- paste0("imagenet_topl/", dtset, "_ensemble_improvements_over_", over, "_co_m_", co_m, ".pdf")
+        ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 9, height = 5)
 
     }
 }
