@@ -15,7 +15,7 @@ base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_
 
 metrics <- c("accuracy", "nll", "ece")
 metric_names <- c(accuracy = "presnosť", nll = "NLL", ece = "ECE",
-    accuracy1 = "presnosť top1", accuracy5 = "presnosť top5")
+    accuracy1 = "presnosť top-1", accuracy5 = "presnosť top-5")
 
 load_ens_dfs <- function(base_dir, comb_methods = NULL)
 {
@@ -69,6 +69,12 @@ plot_nets <- function(base_dir, dtset, output_dir = "evaluation_sk")
     {
        metric_cols <- c("accuracy1", "accuracy5", metric_cols)
     }
+
+    if (dtset == "IMNET")
+    {
+        net_df <- net_df %>% mutate(network = str_remove(network, "_IM2012"))
+    }
+
     net_long <- pivot_longer(
         net_df,
         cols = all_of(metric_cols),
@@ -93,10 +99,24 @@ output_dir = "evaluation_sk", topl_strat = NULL)
 {
     print(paste0("Plotting ensembles", ifelse(is.null(topl_strat), "", paste0(" topl_strat: ", topl_strat))))
     net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
+    list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir)
+
+    if (dtset == "IMNET")
+    {
+        orig_nets <- net_df$network
+        for (net in orig_nets)
+        {
+            names(ens_cal_plt_df)[names(ens_cal_plt_df) == net] <- str_remove(net, "_IM2012")
+            names(ens_pwc_plt_df)[names(ens_pwc_plt_df) == net] <- str_remove(net, "_IM2012")
+        }
+        net_df <- net_df %>% mutate(network = str_remove(network, "_IM2012"))
+    }
+
+    ens_pwc_plt_df <- ens_pwc_plt_df %>% mutate(
+                    combining_method = recode(combining_method, logreg_torch = "logreg"))
 
     networks <- net_df$network
 
-    list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir)
     if (!is.null(topl_strat))
     {
         if (topl_strat == "full")
@@ -135,8 +155,8 @@ output_dir = "evaluation_sk", topl_strat = NULL)
     else 
     {
         acc_plots_params <- list(
-            list(metric = "accuracy1", name = "presnosť top1"),
-            list(metric = "accuracy5", name = "presnosť top5")
+            list(metric = "accuracy1", name = "presnosť top-1"),
+            list(metric = "accuracy5", name = "presnosť top-5")
         )
     }
 
@@ -158,11 +178,11 @@ output_dir = "evaluation_sk", topl_strat = NULL)
             acc_plots <- list()
             for (i in seq_along(acc_plots_params))
             {
-                acc_plot <- ggplot() +
+                acc_plots[[i]] <- ggplot() +
                 (
                     geom_hline(
                     data = cur_nets,
-                    mapping = aes(yintercept = eval(sym(acc_plots_params[[i]][["metric"]])), colour1 = network),
+                    mapping = aes(yintercept = !! sym(acc_plots_params[[i]][["metric"]]), colour1 = network),
                     linetype = "dashed"
                     ) %>%
                     rename_geom_aes(new_aes = c("colour" = "colour1"))
@@ -170,14 +190,14 @@ output_dir = "evaluation_sk", topl_strat = NULL)
                 geom_hline(
                     data = cur_ens_cal,
                     mapping = aes(
-                        yintercept = eval(sym(acc_plots_params[[i]][["metric"]])),
+                        yintercept = !! sym(acc_plots_params[[i]][["metric"]]),
                         color = "TemperatureScaling")
                 ) +
                 (
                     geom_hopline(
                     data = cur_ens_pwc,
                     mapping = aes(
-                        x = combining_method, y = eval(sym(acc_plots_params[[i]][["metric"]])),
+                        x = combining_method, y = !! sym(acc_plots_params[[i]][["metric"]]),
                         colour2 = coupling_method
                     ),
                     linewidth = hp_line_size, width = hp_line_width,
@@ -201,8 +221,6 @@ output_dir = "evaluation_sk", topl_strat = NULL)
                     axis.text.x = element_text(angle = 90),
                     axis.title.x = element_blank()
                 )
-
-                acc_plots[[i]] <- acc_plot
             }
 
             if (processing_top5_acc)
@@ -408,6 +426,21 @@ comp_tables <- function(base_dir, dtset, output_dir = "evaluation_sk", topl_stra
 {
     print(paste0("Printing tables", ifelse(is.null(topl_strat), "", paste0(" topl_strat: ", topl_strat))))
     list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir)
+    net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
+    if (dtset == "IMNET")
+    {
+        orig_nets <- net_df$network
+        for (net in orig_nets)
+        {
+            names(ens_cal_plt_df)[names(ens_cal_plt_df) == net] <- str_remove(net, "_IM2012")
+            names(ens_pwc_plt_df)[names(ens_pwc_plt_df) == net] <- str_remove(net, "_IM2012")
+        }
+        net_df <- net_df %>% mutate(network = str_remove(network, "_IM2012"))
+    }
+
+    ens_pwc_plt_df <- ens_pwc_plt_df %>% mutate(
+                    combining_method = recode(combining_method, logreg_torch = "logreg"))
+
     processing_acc5 <- "accuracy5" %in% colnames(ens_pwc_plt_df)
 
     if (!is.null(topl_strat))
@@ -492,6 +525,21 @@ plot_improvements <- function(
         ens_pwc_plt_df <- droplevels(ens_pwc_plt_df)
     }
 
+    ens_pwc_plt_df <- ens_pwc_plt_df %>% mutate(
+                    combining_method = recode(combining_method, logreg_torch = "logreg"))
+
+    net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
+    if (dtset == "IMNET")
+    {
+        orig_nets <- net_df$network
+        for (net in orig_nets)
+        {
+            names(ens_cal_plt_df)[names(ens_cal_plt_df) == net] <- str_remove(net, "_IM2012")
+            names(ens_pwc_plt_df)[names(ens_pwc_plt_df) == net] <- str_remove(net, "_IM2012")
+        }
+        net_df <- net_df %>% mutate(network = str_remove(network, "_IM2012"))
+    }
+
     small_box_width <- 0.4
     small_box_size <- 0.9
     big_box_width <- length(levels(ens_pwc_plt_df$combining_method))
@@ -506,47 +554,45 @@ plot_improvements <- function(
     else
     {
         acc_plot_params <- list(
-            list(metric = "acc1_imp_", name = "presnosť top1"),
-            list(metric = "acc5_imp_", name = "presnosť top5")
+            list(metric = "acc1_imp_", name = "presnosť top-1"),
+            list(metric = "acc5_imp_", name = "presnosť top-5")
         )
     }
     acc_plots <- list()
     for (i in seq_along(acc_plot_params))
     {
-        acc_plot <- ggplot() +
-        geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
-        geom_boxplot(
-            data = ens_cal_plt_df,
-            mapping = aes(y = !! sym(paste0(acc_plot_params[[i]][["metric"]], over)), color = "TemperatureScaling",
-                x = big_box_x),
-            width = big_box_width
-            ) +
-        (
+        acc_plots[[i]] <- ggplot() +
+            geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
             geom_boxplot(
-            data = ens_pwc_plt_df,
-            mapping = aes(
-                x = combining_method, y = !! sym(paste0(acc_plot_params[[i]][["metric"]], over)),
-                colour2 = coupling_method
-            ),
-            size = small_box_size, width = small_box_width,
-            position = position_dodge(width = 0.65)
-            ) %>%
-            rename_geom_aes(new_aes = c("colour" = "colour2"))
-        ) +
-        scale_colour_brewer(
-            aesthetics = "colour2", palette = 2,
-            name = "párová zväzovacia metóda", type = "qual"
-        ) +
-        ylab(acc_plot_params[[i]][["name"]]) +
-        scale_color_manual(values = c("black"), name = "baseline") +
-        scale_x_discrete(labels = 1:length(levels(ens_pwc_plt_df$combining_method))) +
-        theme_classic() +
-        theme(
-            axis.text.x = element_text(angle = 90),
-            axis.title.x = element_blank()
-        )
-
-        acc_plots[[i]] <- acc_plot
+                data = ens_cal_plt_df,
+                mapping = aes(y = !! sym(paste0(acc_plot_params[[i]][["metric"]], over)), color = "TemperatureScaling",
+                    x = big_box_x),
+                width = big_box_width
+                ) +
+            (
+                geom_boxplot(
+                data = ens_pwc_plt_df,
+                mapping = aes(
+                    x = combining_method, y = !! sym(paste0(acc_plot_params[[i]][["metric"]], over)),
+                    colour2 = coupling_method
+                ),
+                size = small_box_size, width = small_box_width,
+                position = position_dodge(width = 0.65)
+                ) %>%
+                rename_geom_aes(new_aes = c("colour" = "colour2"))
+            ) +
+            scale_colour_brewer(
+                aesthetics = "colour2", palette = 2,
+                name = "párová zväzovacia metóda", type = "qual"
+            ) +
+            ylab(acc_plot_params[[i]][["name"]]) +
+            scale_color_manual(values = c("black"), name = "baseline") +
+            scale_x_discrete(labels = 1:length(levels(ens_pwc_plt_df$combining_method))) +
+            theme_classic() +
+            theme(
+                axis.text.x = element_text(angle = 90),
+                axis.title.x = element_blank()
+            )
     }
 
     if (processing_top5_acc)
@@ -840,7 +886,7 @@ plot_imnet_eval <- function()
     #plot_dependencies(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir)
     comp_tables(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full")
     comp_tables(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast")
-    plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full")
+    plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full", ece_lim = c(-0.2, 0.05))
     plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast")
 }
 
