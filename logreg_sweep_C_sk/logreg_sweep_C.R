@@ -13,10 +13,10 @@ library(scales)
 
 source("utils.R")
 
-base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/logreg_glob_sweep_C"
-base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/logreg_glob_sweep_C"
-eval_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
-eval_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
+base_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/logreg_glob_sweep_C"
+base_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/logreg_glob_sweep_C"
+eval_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
+eval_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
 
 plot_plots <- function(base_dir, eval_dir, cifar)
 {
@@ -39,11 +39,11 @@ plot_plots <- function(base_dir, eval_dir, cifar)
 
     ens_eval_df_pwc <- add_combination_metrics(net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_eval_df_pwc)[[2]]
 
-    ens_eval_df_pwc <- ens_eval_df_pwc %>% group_by(method) %>%
-                        summarise(
-                            acc_imp_o_avg_median = median(acc_imp_avg),
-                            nll_imp_o_avg_median = median(nll_imp_avg),
-                            ece_imp_o_avg_median = median(ece_imp_avg))
+    #ens_eval_df_pwc <- ens_eval_df_pwc %>% group_by(method) %>%
+    #                    summarise(
+    #                        acc_imp_o_avg_median = median(acc_imp_avg),
+    #                        nll_imp_o_avg_median = median(nll_imp_avg),
+    #                        ece_imp_o_avg_median = median(ece_imp_avg))
 
     limits <- list(
         "acc" = list("10" = c(0.0, 0.03), "100" = c(0.0, 0.1)),
@@ -56,11 +56,23 @@ plot_plots <- function(base_dir, eval_dir, cifar)
 
     for (met_i in seq_along(metrics))
     {
+        C_range <- log10(max(ens_df_pwc$C)) - log10(min(ens_df_pwc$C)) + 0.2
         met <- metrics[met_i]
         metric_plot <- ens_df_pwc %>%
                     ggplot() +
-                    geom_boxplot(mapping = aes_string(x = "C", y = paste0(met, "_imp_avg"), group = "C")) +
-                    geom_hline(data = ens_eval_df_pwc, mapping = aes_string(yintercept = paste0(met, "_imp_o_avg_median"), color = shQuote("red"))) +
+                    geom_boxplot(
+                        data = ens_eval_df_pwc,
+                        mapping = aes_string(
+                            y = paste0(met, "_imp_avg"),
+                            color = shQuote("red")),
+                        width = C_range,
+                        alpha = 0.5) +
+                    geom_boxplot(
+                        mapping = aes_string(
+                            x = "C",
+                            y = paste0(met, "_imp_avg"),
+                            group = "C"),
+                            alpha = 0.5) +
                     facet_rep_grid(method ~ ., repeat.tick.labels = TRUE, scales = "free_x") +
                     scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
                     coord_cartesian(ylim = limits[[met]][[as.character(cifar)]]) +
@@ -73,10 +85,20 @@ plot_plots <- function(base_dir, eval_dir, cifar)
 
         metric_plot <- ens_df_pwc %>% filter(str_split(method, pattern = fixed(" + "), simplify = TRUE)[, 1] == "logreg") %>%
                     ggplot() +
-                    geom_boxplot(mapping = aes_string(x = "C", y = paste0(met, "_imp_avg"), group = "C")) +
-                    geom_hline(
-                        data = ens_eval_df_pwc %>% filter(str_split(method, pattern = fixed(" + "), simplify = TRUE)[, 1] == "logreg"),
-                        mapping = aes_string(yintercept = paste0(met, "_imp_o_avg_median"), color = shQuote("medián sweep_C"))) +
+                    geom_boxplot(
+                        data = ens_eval_df_pwc %>% 
+                            filter(str_split(method, pattern = fixed(" + "), simplify = TRUE)[, 1] == "logreg"),
+                        mapping = aes_string(
+                            y = paste0(met, "_imp_avg"),
+                            color = shQuote("sweep_C")),
+                        width = C_range,
+                        alpha = 0.5) +
+                    geom_boxplot(
+                        mapping = aes_string(
+                            x = "C",
+                            y = paste0(met, "_imp_avg"),
+                            group = "C"),
+                        alpha = 0.5) +
                     facet_rep_grid(method ~ ., repeat.tick.labels = TRUE, scales = "free_x") +
                     scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
                     coord_cartesian(ylim = limits_single[[met]][[as.character(cifar)]]) +
