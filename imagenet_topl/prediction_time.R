@@ -4,7 +4,9 @@ library(Cairo)
 
 base_dir <- "/home/mordechaj/school/disertation/data/imagenet/topl/"
 
-plot_inf_time <- function(dir, ens_sizes = NULL)
+plot_inf_time <- function(
+    dir, ens_sizes = NULL, combining_methods = NULL,
+    file_name = "IMNET_topl_time_dependency.pdf", width = 9, height = 9)
 {
     pwc_df <- read.csv(file.path(dir, "ens_pwc_metrics.csv"))
     pwc_df <- pwc_df %>% 
@@ -15,6 +17,10 @@ plot_inf_time <- function(dir, ens_sizes = NULL)
     if (!is.null(ens_sizes))
     {
         pwc_df <- pwc_df %>% filter(combination_size %in% ens_sizes)
+    }
+    if (!is.null(combining_methods))
+    {
+        pwc_df <- pwc_df %>% filter(combining_method %in% combining_methods)
     }
 
     small_box_width <- 0.4
@@ -37,10 +43,10 @@ plot_inf_time <- function(dir, ens_sizes = NULL)
                 panel.grid.minor = element_blank())
 
     ggsave(
-        filename = file.path("imagenet_topl", "IMNET_topl_time_dependency.pdf"),
+        filename = file.path("imagenet_topl", file_name),
         device = cairo_pdf,
-        width = 9,
-        height = 9
+        width = width,
+        height = height
     )
 }
 

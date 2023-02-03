@@ -811,7 +811,7 @@ plot_improvements_topls <- function(base_dir, dtset, over = "best", comb_methods
             name = "párová zväzovacia metóda", type = "qual"
         ) +
         ylab("ECE") +
-        xlab("kombinačná metóda") +
+        xlab("topl") +
         scale_color_manual(values = c("black"), name = "baseline") +
         scale_x_discrete() +
         theme_classic() +
@@ -879,7 +879,9 @@ plot_plots <- function(base_dir, cifar)
 plot_imnet_eval <- function()
 {
     source_dir <- "/home/mordechaj/school/disertation/data/imagenet/eval"
+    source_dir_topl <- "/home/mordechaj/school/disertation/data/imagenet/topl"
     dest_dir <- "imagenet_evaluation"
+    plot_improvements_topls(base_dir = source_dir_topl, dtset = "IMNET")
     plot_nets(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir)
     plot_ensembles(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full")
     plot_ensembles(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast")
