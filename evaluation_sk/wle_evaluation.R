@@ -707,6 +707,196 @@ plot_improvements <- function(
     ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = size[1], height = size[2])
 }
 
+plot_final_configs_IMN <- function(
+    base_dir, over = "best",
+    size = c(7, 7), acc_lim = NULL, nll_lim = NULL, ece_lim = NULL,
+    output_dir = "imagenet_evaluation", fast_and_full = NULL)
+{
+    print(paste0("Plotting final configs", fast_and_full))
+    list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir, comb_methods = NULL)
+
+    ens_pwc_plt_df <- ens_pwc_plt_df %>% mutate(
+                    combining_method = recode(combining_method, logreg_torch = "logreg"))
+
+    Mtopl <- max(ens_pwc_plt_df$topl)
+    ens_pwc_plt_df <- ens_pwc_plt_df %>% filter(
+        (combining_method == fast_and_full[["fast"]][["combining_method"]] &
+            coupling_method == fast_and_full[["fast"]][["coupling_method"]] & topl < Mtopl) |
+        (combining_method == fast_and_full[["full"]][["combining_method"]] &
+            coupling_method == fast_and_full[["full"]][["coupling_method"]] & topl == Mtopl)) %>% mutate(
+                topl = as.factor(ifelse(topl < Mtopl, "fast", "full")))
+
+    net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
+    orig_nets <- net_df$network
+    for (net in orig_nets)
+    {
+        names(ens_cal_plt_df)[names(ens_cal_plt_df) == net] <- str_remove(net, "_IM2012")
+        names(ens_pwc_plt_df)[names(ens_pwc_plt_df) == net] <- str_remove(net, "_IM2012")
+    }
+    net_df <- net_df %>% mutate(network = str_remove(network, "_IM2012"))
+
+    small_box_width <- 0.4
+    small_box_size <- 0.9
+    big_box_width <- 2
+    big_box_x <- 1.5
+
+    processing_top5_acc <- "accuracy5" %in% colnames(ens_pwc_plt_df)
+
+    if (!processing_top5_acc)
+    {
+        acc_plot_params <- list(list(metric = "acc_imp_", name = "presnosť"))
+    }
+    else
+    {
+        acc_plot_params <- list(
+            list(metric = "acc1_imp_", name = "presnosť top-1"),
+            list(metric = "acc5_imp_", name = "presnosť top-5")
+        )
+    }
+    acc_plots <- list()
+    for (i in seq_along(acc_plot_params))
+    {
+        acc_plots[[i]] <- ggplot() +
+            geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
+            geom_boxplot(
+                data = ens_cal_plt_df,
+                mapping = aes(y = !! sym(paste0(acc_plot_params[[i]][["metric"]], over)), color = "TemperatureScaling",
+                    x = big_box_x), alpha = 0.5,
+                width = big_box_width
+                ) +
+            (
+                geom_boxplot(
+                data = ens_pwc_plt_df,
+                mapping = aes(
+                    x = topl, colour2 = topl, y = !! sym(paste0(acc_plot_params[[i]][["metric"]], over))),
+                size = small_box_size, width = small_box_width,
+                position = position_dodge(width = 0.65)
+                ) %>%
+                    rename_geom_aes(new_aes = c("colour" = "colour2"))
+    ) +
+    scale_colour_brewer(
+        aesthetics = "colour2", palette = 2,
+        name = "stratégia predikcie", type = "qual"
+    ) +
+            ylab(acc_plot_params[[i]][["name"]]) +
+            scale_color_manual(values = c("black"), name = "baseline") +
+            scale_x_discrete(labels = 1:length(levels(ens_pwc_plt_df$topl))) +
+            theme_classic() +
+            theme(
+                axis.text.x = element_text(angle = 90),
+                axis.title.x = element_blank()
+            )
+    }
+
+    if (processing_top5_acc)
+    {
+        acc_plot <- acc_plots[[1]] / acc_plots[[2]]
+    }
+    else 
+    {
+        acc_plot <- acc_plots[[1]]
+    }
+
+    if (!is.null(acc_lim))
+    {
+        acc_plot <- acc_plot + coord_cartesian(ylim = acc_lim)
+    }
+
+    nll_plot <- ggplot() +
+    geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
+    geom_boxplot(
+        data = ens_cal_plt_df,
+        mapping = aes(y = !! sym(paste0("nll_imp_", over)), color = "TemperatureScaling",
+            x = big_box_x), alpha = 0.5,
+        width = big_box_width
+    ) +
+    (
+        geom_boxplot(
+        data = ens_pwc_plt_df,
+        mapping = aes(
+            x = topl, colour2 = topl, y = !! sym(paste0("nll_imp_", over))
+        ),
+        size = small_box_size, width = small_box_width,
+        position = position_dodge(width = 0.65)
+        ) %>% rename_geom_aes(new_aes = c("colour" = "colour2"))
+    ) +
+    scale_colour_brewer(
+        aesthetics = "colour2", palette = 2,
+        name = "stratégia predikcie", type = "qual"
+    ) +
+    ylab("NLL") +
+    scale_color_manual(values = c("black"), name = "baseline") +
+    scale_x_discrete(labels = 1:length(unique(ens_pwc_plt_df$topl))) +
+    theme_classic() +
+    theme(
+        axis.text.x = element_text(angle = 90),
+        axis.title.x = element_blank()
+    )
+
+    if (!is.null(nll_lim))
+    {
+        nll_plot <- nll_plot + coord_cartesian(ylim = nll_lim)
+    }
+
+    print(levels(ens_pwc_plt_df$topl))
+    nums <- c(1:length(unique(ens_pwc_plt_df$topl)))
+    names(nums) <- levels(ens_pwc_plt_df$topl)
+    max_len <- max(unlist(lapply(X = levels(ens_pwc_plt_df$topl), FUN = nchar)))
+    x_labs <- lapply(
+        X = nums,
+        FUN = function(i) paste0(str_pad(
+            string = levels(ens_pwc_plt_df$topl)[i],
+            width = 1.8 * max_len - 0.8 * nchar(levels(ens_pwc_plt_df$topl)[i]) + 4,
+            side = "both",
+            pad = " "), i))
+
+    ece_plot <- ggplot() +
+    geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
+    geom_boxplot(
+        data = ens_cal_plt_df,
+        mapping = aes(y = !! sym(paste0("ece_imp_", over)), color = "TemperatureScaling",
+            x = big_box_x), alpha = 0.5,
+        width = big_box_width
+    ) +
+    (
+        geom_boxplot(
+        data = ens_pwc_plt_df,
+        mapping = aes(
+            x = topl, colour2 = topl, y = !! sym(paste0("ece_imp_", over))
+        ),
+        size = small_box_size, width = small_box_width,
+        position = position_dodge(width = 0.65)
+        ) %>% rename_geom_aes(new_aes = c("colour" = "colour2"))
+    ) +
+    scale_colour_brewer(
+        aesthetics = "colour2", palette = 2,
+        name = "stratégia predikcie", type = "qual"
+    ) +
+    ylab("ECE") +
+    xlab("stratégia predikcie") +
+    scale_color_manual(values = c("black"), name = "baseline") +
+    scale_x_discrete(labels = x_labs) +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90))
+
+    if (!is.null(ece_lim))
+    {
+        ece_plot <- ece_plot + coord_cartesian(ylim = ece_lim)
+    }
+
+    res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect") #+
+        #plot_annotation(title = paste0(
+        #    "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
+        #)
+
+    plot_name <- file.path(
+        output_dir,
+        paste0(
+            "IMN_final_configs_improvements_over_", over, ".pdf"))
+    ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = size[1], height = size[2])
+}
+
+
 plot_improvements_topls <- function(base_dir, dtset, over = "best", comb_methods = NULL, output_dir = "imagenet_topl")
 {
     list[ens_cal_df, ens_pwc_df] <- load_ens_dfs(base_dir = base_dir, comb_methods = comb_methods)
@@ -881,6 +1071,10 @@ plot_imnet_eval <- function()
     source_dir <- "/home/mordechaj/school/disertation/data/imagenet/eval"
     source_dir_topl <- "/home/mordechaj/school/disertation/data/imagenet/topl"
     dest_dir <- "imagenet_evaluation"
+    plot_final_configs_IMN(base_dir = source_dir, fast_and_full = list(
+        fast = list(combining_method = "logreg", coupling_method = "bc"),
+        full = list(combining_method = "grad_m2", coupling_method = "m2")))
+    return()
     plot_improvements_topls(base_dir = source_dir_topl, dtset = "IMNET")
     plot_nets(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir)
     plot_ensembles(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full")
