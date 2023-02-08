@@ -764,7 +764,7 @@ plot_final_configs_IMN <- function(
                     x = big_box_x), alpha = 0.5,
                 width = big_box_width
                 ) +
-            (
+                (
                 geom_boxplot(
                 data = ens_pwc_plt_df,
                 mapping = aes(
@@ -773,19 +773,21 @@ plot_final_configs_IMN <- function(
                 position = position_dodge(width = 0.65)
                 ) %>%
                     rename_geom_aes(new_aes = c("colour" = "colour2"))
-    ) +
-    scale_colour_brewer(
-        aesthetics = "colour2", palette = 2,
-        name = "stratégia predikcie", type = "qual"
-    ) +
-            ylab(acc_plot_params[[i]][["name"]]) +
-            scale_color_manual(values = c("black"), name = "baseline") +
-            scale_x_discrete(labels = 1:length(levels(ens_pwc_plt_df$topl))) +
-            theme_classic() +
-            theme(
-                axis.text.x = element_text(angle = 90),
-                axis.title.x = element_blank()
-            )
+                ) +
+                scale_colour_brewer(
+                    aesthetics = "colour2", palette = 2,
+                    name = "stratégia predikcie", type = "qual"
+                ) +
+                ylab(acc_plot_params[[i]][["name"]]) +
+                scale_color_manual(values = c("black"), name = "baseline") +
+                scale_x_discrete(labels = 1:length(levels(ens_pwc_plt_df$topl))) +
+                theme_classic() +
+                theme(
+                    #axis.text.x = element_text(angle = 90),
+                    axis.text.x = element_blank(),
+                    axis.ticks.x = element_blank(),
+                    axis.title.x = element_blank()
+                )
     }
 
     if (processing_top5_acc)
@@ -829,7 +831,9 @@ plot_final_configs_IMN <- function(
     scale_x_discrete(labels = 1:length(unique(ens_pwc_plt_df$topl))) +
     theme_classic() +
     theme(
-        axis.text.x = element_text(angle = 90),
+        #axis.text.x = element_text(angle = 90),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
         axis.title.x = element_blank()
     )
 
@@ -838,17 +842,16 @@ plot_final_configs_IMN <- function(
         nll_plot <- nll_plot + coord_cartesian(ylim = nll_lim)
     }
 
-    print(levels(ens_pwc_plt_df$topl))
-    nums <- c(1:length(unique(ens_pwc_plt_df$topl)))
-    names(nums) <- levels(ens_pwc_plt_df$topl)
-    max_len <- max(unlist(lapply(X = levels(ens_pwc_plt_df$topl), FUN = nchar)))
-    x_labs <- lapply(
-        X = nums,
-        FUN = function(i) paste0(str_pad(
-            string = levels(ens_pwc_plt_df$topl)[i],
-            width = 1.8 * max_len - 0.8 * nchar(levels(ens_pwc_plt_df$topl)[i]) + 4,
-            side = "both",
-            pad = " "), i))
+    # nums <- c(1:length(unique(ens_pwc_plt_df$topl)))
+    # names(nums) <- levels(ens_pwc_plt_df$topl)
+    # max_len <- max(unlist(lapply(X = levels(ens_pwc_plt_df$topl), FUN = nchar)))
+    # x_labs <- lapply(
+    #    X = nums,
+    #    FUN = function(i) paste0(str_pad(
+    #        string = levels(ens_pwc_plt_df$topl)[i],
+    #        width = 1.8 * max_len - 0.8 * nchar(levels(ens_pwc_plt_df$topl)[i]) + 4,
+    #        side = "both",
+    #        pad = " "), i))
 
     ece_plot <- ggplot() +
     geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
@@ -875,9 +878,12 @@ plot_final_configs_IMN <- function(
     ylab("ECE") +
     xlab("stratégia predikcie") +
     scale_color_manual(values = c("black"), name = "baseline") +
-    scale_x_discrete(labels = x_labs) +
+    scale_x_discrete() +
     theme_classic() +
-    theme(axis.text.x = element_text(angle = 90))
+    theme(
+        # axis.text.x = element_text(angle = 90)
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
 
     if (!is.null(ece_lim))
     {
@@ -1073,7 +1079,8 @@ plot_imnet_eval <- function()
     dest_dir <- "imagenet_evaluation"
     plot_final_configs_IMN(base_dir = source_dir, fast_and_full = list(
         fast = list(combining_method = "logreg", coupling_method = "bc"),
-        full = list(combining_method = "grad_m2", coupling_method = "m2")))
+        full = list(combining_method = "grad_m2", coupling_method = "m2")),
+        size = c(5, 5))
     return()
     plot_improvements_topls(base_dir = source_dir_topl, dtset = "IMNET")
     plot_nets(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir)
