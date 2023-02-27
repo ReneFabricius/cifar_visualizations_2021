@@ -12,7 +12,7 @@ library(reticulate)
 library(Rfast)
 library(Cairo)
 
-plot_improvements <- function(dir, dts)
+plot_improvements <- function(dir, dts, single_plot = FALSE)
 {
     pwc_metrics <- read.csv(file.path(dir, "ens_pwc_metrics.csv"))
     cal_metrics <- read.csv(file.path(dir, "ens_cal_metrics.csv"))
@@ -20,7 +20,6 @@ plot_improvements <- function(dir, dts)
 
     best_net_mets <- function(comb_id)
     {
-
         cur_net_mets <- net_metrics[as.logical(pwc_metrics[pwc_metrics$combination_id == comb_id, ][1, net_metrics$network]), ]
         comb_mets <- data.frame(as.list(comb_id)) %>% mutate(
             best_net_MSP_AUROC = max(cur_net_mets$MSP_AUROC),
@@ -76,30 +75,39 @@ plot_improvements <- function(dir, dts)
 
     plot_metric <- function(ood_method)
     {
-        au_imps_pwc_print <- au_imps_pwc %>% filter(ens_detection == ood_method)
-        if (ood_method == "UNC")
+        if (ood_method != "BOTH")
         {
-            au_imps_pwc_print <- au_imps_pwc_print %>% filter(
-                combining_method == "logreg",
-                coupling_method != "bc")
+            au_imps_pwc_print <- au_imps_pwc %>% filter(ens_detection == ood_method)
         }
+        else 
+        {
+           au_imps_pwc_print <- au_imps_pwc
+        }
+
+        au_imps_pwc_print <- au_imps_pwc_print %>% filter(
+            combining_method == "logreg",
+            coupling_method != "bc")
 
         big_box_width <- length(unique(au_imps_pwc_print$coupling_method))
         big_box_x <- (1 + big_box_width) / 2
+
+        au_imps_pwc_print <- au_imps_pwc_print %>% mutate(
+            ens_detection = dplyr::recode(ens_detection, UNC = "WLE neistota", ENS = "MSP"))
 
         plot <- ggplot() +
                 scale_x_discrete(breaks = levels(au_imps_pwc$coupling_method), name = "párová zväzovacia metóda") +
                 geom_boxplot(
                     au_imps_cal,
                     mapping = aes(y = value, color = "TemperatureScaling", x = big_box_x),
-                    width = big_box_width) +
+                    width = big_box_width) + 
                 geom_boxplot(
                     au_imps_pwc_print,
                     mapping = aes(
                         x = coupling_method,
                         y = value,
-                        color = paste0("WLE ", ifelse(ood_method == "UNC", "neistota", "MSP"))),
-                        position = "dodge") +
+                        color = ens_detection),
+                    position = position_dodge2(width = 1, padding = 0.2),
+                    alpha = 0.7) +
                 geom_hline(yintercept = 0.0, color = "red", linetype = "dashed", alpha = 0.7) +
                 facet_grid(combining_method ~ metric) +
                 scale_color_brewer(type = "qual", palette = 2, name = "metóda detekcie") +
@@ -109,7 +117,28 @@ plot_improvements <- function(dir, dts)
                     panel.grid.major = element_blank(),
                     panel.grid.minor = element_blank())
 
-        plot <- plot + coord_cartesian(ylim = c(ifelse(ood_method == "UNC", -0.2, -0.025), ifelse(ood_method == "UNC", 0.03, 0.04)))
+        if (ood_method == "UNC")
+        {
+            plot <- plot + coord_cartesian(ylim = c(-0.2, 0.03))
+        }
+        else if (ood_method == "MSP") 
+        {
+            plot <- plot + coord_cartesian(ylim = c(-0.025, 0.04))
+        }
+        else if (ood_method == "BOTH")
+        {
+            if (dts == "C10vC100")
+            {
+                plot <- plot + coord_cartesian(ylim = c(-0.04, 0.02))
+            }
+            else if (dts == "C100vC10") 
+            {
+                plot <- plot + coord_cartesian(ylim = c(-0.2, 0.04))
+            }
+        }
+
+        plot <- plot + ggtitle(dts)
+
         ggsave(
             filename = file.path("cifar_ood", paste0(dts, "_", ood_method, "_au_improvements.pdf")),
             plot = plot,
@@ -118,16 +147,21 @@ plot_improvements <- function(dir, dts)
 
         return(plot)
     }
-    ens_plot <- plot_metric("ENS")
-    unc_plot <- plot_metric("UNC")
+    if (!single_plot)
+    {
+        ens_plot <- plot_metric("ENS")
+        unc_plot <- plot_metric("UNC")
+        return(list(ens_plot, unc_plot))
+    }
 
-    return(list(ens_plot, unc_plot))
+    return(plot_metric("BOTH"))
 }
 
 base_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
 base_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
 c10vc100_plots <- plot_improvements(base_dir_C10, "C10vC100")
 c100vc10_plots <- plot_improvements(base_dir_C100, "C100vC10")
+
 
 unc_10v100 <- c10vc100_plots[[2]]
 unc_100v10 <- c100vc10_plots[[2]]
@@ -136,6 +170,17 @@ unc_plot <- (unc_10v100 | unc_100v10) + plot_layout(guides = "collect")
 ggsave(
     filename = file.path("cifar_ood", "both_unc_au_improvements.pdf"),
     plot = unc_plot,
+    device = cairo_pdf,
+    width = 7,
+    height = 3
+)
+
+c10vc100_single <- plot_improvements(base_dir_C10, "C10vC100", single_plot = TRUE)
+c100vc10_single <- plot_improvements(base_dir_C100, "C100vC10", single_plot = TRUE)
+ood_plot <- (c10vc100_single | c100vc10_single) + plot_layout(guides = "collect")
+ggsave(
+    filename = file.path("cifar_ood", "print", "both_both_au_improvements.pdf"),
+    plot = ood_plot,
     device = cairo_pdf,
     width = 7,
     height = 3
