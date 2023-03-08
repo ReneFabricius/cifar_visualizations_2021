@@ -92,14 +92,16 @@ plot_improvements <- function(dir, dts, single_plot = FALSE)
         big_box_x <- (1 + big_box_width) / 2
 
         au_imps_pwc_print <- au_imps_pwc_print %>% mutate(
-            ens_detection = dplyr::recode(ens_detection, UNC = "WLE neistota", ENS = "MSP"))
+            ens_detection = dplyr::recode(
+                ens_detection,
+                UNC = "WLE neistota", ENS = "MSP"))
 
         plot <- ggplot() +
                 scale_x_discrete(breaks = levels(au_imps_pwc$coupling_method), name = "párová zväzovacia metóda") +
                 geom_boxplot(
                     au_imps_cal,
-                    mapping = aes(y = value, color = "TemperatureScaling", x = big_box_x),
-                    width = big_box_width) + 
+                    mapping = aes(y = value, color = "baseline", x = big_box_x),
+                    width = big_box_width) +
                 geom_boxplot(
                     au_imps_pwc_print,
                     mapping = aes(
