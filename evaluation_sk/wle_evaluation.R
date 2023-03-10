@@ -1093,4 +1093,15 @@ plot_imnet_eval <- function()
     plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast")
 }
 
-plot_imnet_eval()
+#plot_imnet_eval()
+
+plot_cif_ood_classif_eval <- function()
+{
+    source_c10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
+    source_c100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
+    dest_dir <- "cifar_ood/classification_eval"
+    plot_improvements(base_dir = source_c10, dtset = "C10", output_dir = dest_dir)
+    plot_improvements(base_dir = source_c100, dtset = "C100", output_dir = dest_dir)
+}
+
+plot_cif_ood_classif_eval()

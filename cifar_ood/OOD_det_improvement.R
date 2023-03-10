@@ -94,13 +94,13 @@ plot_improvements <- function(dir, dts, single_plot = FALSE)
         au_imps_pwc_print <- au_imps_pwc_print %>% mutate(
             ens_detection = dplyr::recode(
                 ens_detection,
-                UNC = "WLE neistota", ENS = "MSP"))
+                UNC = "WLE neistota", ENS = "WLE MSP"))
 
         plot <- ggplot() +
                 scale_x_discrete(breaks = levels(au_imps_pwc$coupling_method), name = "párová zväzovacia metóda") +
                 geom_boxplot(
                     au_imps_cal,
-                    mapping = aes(y = value, color = "baseline", x = big_box_x),
+                    mapping = aes(y = value, color = "baseline MSP", x = big_box_x),
                     width = big_box_width) +
                 geom_boxplot(
                     au_imps_pwc_print,

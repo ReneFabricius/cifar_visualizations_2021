@@ -1,0 +1,78 @@
+---
+title: "OOD detection comparison with baseline"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library("ggpubr")
+```
+
+```{r read}
+load_preproc <- function(dir)
+{
+    pwc_metrics <- read.csv(file.path(dir, "ens_pwc_metrics.csv"))
+    cal_metrics <- read.csv(file.path(dir, "ens_cal_metrics.csv"))
+    net_metrics <- read.csv(file.path(dir, "net_metrics.csv"))
+
+    best_net_mets <- function(comb_id)
+    {
+        cur_net_mets <- net_metrics[as.logical(pwc_metrics[pwc_metrics$combination_id == comb_id, ][1, net_metrics$network]), ]
+        comb_mets <- data.frame(as.list(comb_id)) %>% mutate(
+            best_net_MSP_AUROC = max(cur_net_mets$MSP_AUROC),
+            best_net_MLI_AUROC = max(cur_net_mets$MLI_AUROC),
+            best_net_MSP_AUPRC = max(cur_net_mets$MSP_AUPRC),
+            best_net_MLI_AUPRC = max(cur_net_mets$MLI_AUPRC))
+    }
+
+    best_net_aus <- dplyr::bind_rows(
+        apply(unique(pwc_metrics[c("combination_id")]), 1, best_net_mets))
+    pwc_metrics <- merge(pwc_metrics, best_net_aus)
+    cal_metrics <- merge(cal_metrics, best_net_aus)
+
+    cal_metrics <- cal_metrics %>% 
+        select(combination_id, combination_size, MSP_AUROC, MSP_AUPRC) %>%
+        rename(BSL_MSP_AUPRC = MSP_AUPRC, BSL_MSP_AUROC = MSP_AUROC)
+
+    pwc_metrics <- pwc_metrics %>% select(combination_id, combination_size, combining_method, coupling_method, MSP_AUROC, MSP_AUPRC)
+
+    metrics <- left_join(pwc_metrics, cal_metrics)
+
+    metrics <- metrics %>% mutate(DIFF_AUROC = MSP_AUROC - BSL_MSP_AUROC, DIFF_AUPRC = MSP_AUPRC - BSL_MSP_AUPRC)
+
+    for (co_m in unique(metrics$combining_method))
+    {
+        metrics_co <- metrics %>% filter(combining_method == co_m)
+        for (cp_m in unique(metrics_co$coupling_method))
+        {
+            metrics_co_cp <- metrics_co %>% filter(coupling_method == cp_m)
+            print(sprintf("Method %s+%s", co_m, cp_m))
+            method <- paste0(co_m, "+", cp_m)
+            print(ggdensity(data = metrics_co_cp, x = "DIFF_AUPRC", xlab = "AUPRC difference", title = method))
+            print(ggqqplot(data = metrics_co_cp, x = "DIFF_AUPRC", title = method))
+            print(sprintf("Method %s+%s", co_m, cp_m))
+            print(shapiro.test(metrics_co_cp$DIFF_AUPRC))
+            print(ggdensity(data = metrics_co_cp, x = "DIFF_AUROC", xlab = "AUROC difference", title = method))
+            print(ggqqplot(data = metrics_co_cp, x = "DIFF_AUROC", title = method))
+            print(sprintf("Method %s+%s", co_m, cp_m))
+            print(shapiro.test(metrics_co_cp$DIFF_AUROC))
+        }
+    }
+}
+```
+
+Shapiro-Wilk zero hypothesis is data normality.
+Accuracy differences seem to be normal, so we can proceed with the t-tests.
+
+```{r load data}
+base_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
+base_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
+
+print("Processing C10 vs C100")
+dfs <- load_preproc(base_dir_C10)
+
+```
