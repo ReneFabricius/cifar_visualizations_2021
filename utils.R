@@ -460,6 +460,114 @@ gather <- function(data, index, index_dim, along)
   return(arr_sel)
 }
 
+add_combination_metrics_repl <- function(net_df, ens_df_cal, ens_df_pwc)
+{
+  # An ugly copy, may need to rework one day
+  networks <- net_df$network
+
+  acc_cols <- c("acc_min", "acc_max", "acc_avg", "acc_var")
+  acck_cols <- c(
+    "acc1_min", "acc1_max", "acc1_avg", "acc1_var",
+    "acc5_min", "acc5_max", "acc5_avg", "acc5_var"
+  )
+
+  has_acck <- "accuracy5" %in% colnames(net_df)
+
+  comb_stats_df <- data.frame(matrix(
+    ncol = ifelse(has_acck, 19, 15), nrow = 0,
+    dimnames = list(NULL, c(
+      "combination_size", "combination_id", "replication",
+      if (has_acck) acck_cols else acc_cols,
+      "nll_min", "nll_max", "nll_avg", "nll_var",
+      "ece_min", "ece_max", "ece_avg", "ece_var"
+    ))
+  ))
+
+  for (repli in unique(net_df$replication))
+  {
+    for (sss in unique(ens_df_cal %>%
+                        filter(replication == repli) %>%
+                        pull(combination_size)))
+    {
+        for (ssi in unique(ens_df_cal %>%
+            filter(combination_size == sss & replication == repli) %>%
+            pull(combination_id)))
+        {
+            cur_nets_vec <- to_vec(
+                for (net in networks) {
+                    if (str_replace_all(net, "-", ".") %in% colnames(ens_df_cal) &&
+                    (ens_df_cal %>%
+                        filter(combination_size == sss & combination_id == ssi & replication == repli) %>%
+                        pull(str_replace_all(net, "-", ".")))[1] == T) {
+                    net
+                    }
+                }
+            )
+            cur_nets <- net_df %>% filter(network %in% cur_nets_vec & replication == repli)
+            if (has_acck)
+              {
+                acc_stats <- c(
+                  min(cur_nets$accuracy1), max(cur_nets$accuracy1), mean(cur_nets$accuracy1), var(cur_nets$accuracy1),
+                  min(cur_nets$accuracy5), max(cur_nets$accuracy5), mean(cur_nets$accuracy5), var(cur_nets$accuracy5)
+                )
+              }
+              else 
+              {
+                acc_stats <- c(
+                  min(cur_nets$accuracy), max(cur_nets$accuracy), mean(cur_nets$accuracy), var(cur_nets$accuracy)
+                )
+              }
+
+            comb_stats_df[nrow(comb_stats_df) + 1, ] <- c(
+            sss, ssi, repli,
+            acc_stats,
+            min(cur_nets$nll), max(cur_nets$nll), mean(cur_nets$nll), var(cur_nets$nll),
+            min(cur_nets$ece), max(cur_nets$ece), mean(cur_nets$ece), var(cur_nets$ece)
+            )
+        }
+    }
+  }
+
+  ens_df_cal <- merge(ens_df_cal, comb_stats_df)
+  if (has_acck)
+  {
+    ens_df_cal$acc1_imp_avg <- ens_df_cal$accuracy1 - ens_df_cal$acc1_avg
+    ens_df_cal$acc5_imp_avg <- ens_df_cal$accuracy5 - ens_df_cal$acc5_avg
+    ens_df_cal$acc1_imp_best <- ens_df_cal$accuracy1 - ens_df_cal$acc1_max
+    ens_df_cal$acc5_imp_best <- ens_df_cal$accuracy5 - ens_df_cal$acc5_max
+  }
+  else 
+  {
+    ens_df_cal$acc_imp_avg <- ens_df_cal$accuracy - ens_df_cal$acc_avg
+    ens_df_cal$acc_imp_best <- ens_df_cal$accuracy - ens_df_cal$acc_max
+  }
+  ens_df_cal$nll_imp_avg <- -(ens_df_cal$nll - ens_df_cal$nll_avg)
+  ens_df_cal$nll_imp_best <- -(ens_df_cal$nll - ens_df_cal$nll_min)
+  ens_df_cal$ece_imp_avg <- -(ens_df_cal$ece - ens_df_cal$ece_avg)
+  ens_df_cal$ece_imp_best <- -(ens_df_cal$ece - ens_df_cal$ece_min)
+
+  ens_df_pwc <- merge(ens_df_pwc, comb_stats_df)
+  if (has_acck)
+  {
+    ens_df_pwc$acc1_imp_avg <- ens_df_pwc$accuracy1 - ens_df_pwc$acc1_avg
+    ens_df_pwc$acc5_imp_avg <- ens_df_pwc$accuracy5 - ens_df_pwc$acc5_avg
+    ens_df_pwc$acc1_imp_best <- ens_df_pwc$accuracy1 - ens_df_pwc$acc1_max
+    ens_df_pwc$acc5_imp_best <- ens_df_pwc$accuracy5 - ens_df_pwc$acc5_max
+  }
+  else 
+  {
+    ens_df_pwc$acc_imp_avg <- ens_df_pwc$accuracy - ens_df_pwc$acc_avg
+    ens_df_pwc$acc_imp_best <- ens_df_pwc$accuracy - ens_df_pwc$acc_max
+  }
+  ens_df_pwc$nll_imp_avg <- -(ens_df_pwc$nll - ens_df_pwc$nll_avg)
+  ens_df_pwc$nll_imp_best <- -(ens_df_pwc$nll - ens_df_pwc$nll_min)
+  ens_df_pwc$ece_imp_avg <- -(ens_df_pwc$ece - ens_df_pwc$ece_avg)
+  ens_df_pwc$ece_imp_best <- -(ens_df_pwc$ece - ens_df_pwc$ece_min)
+
+  return(list(ens_df_cal, ens_df_pwc))
+ 
+}
+
 add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
 {
   networks <- net_df$network
@@ -493,7 +601,7 @@ add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
                   if (str_replace_all(net, "-", ".") %in% colnames(ens_df_cal) &&
                   (ens_df_cal %>%
                       filter(combination_size == sss & combination_id == ssi) %>%
-                      pull(str_replace_all(net, "-", ".")))[1] == "True") {
+                      pull(str_replace_all(net, "-", ".")))[1] == T) {
                   net
                   }
               }

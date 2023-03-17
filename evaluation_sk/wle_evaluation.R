@@ -17,15 +17,36 @@ metrics <- c("accuracy", "nll", "ece")
 metric_names <- c(accuracy = "presnosť", nll = "NLL", ece = "ECE",
     accuracy1 = "presnosť top-1", accuracy5 = "presnosť top-5")
 
-load_ens_dfs <- function(base_dir, comb_methods = NULL)
+load_ens_dfs <- function(base_dir, comb_methods = NULL, excl_networks = NULL)
 {
     net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
     ens_df_cal <- read.csv(file.path(base_dir, "ens_cal_metrics.csv"))
     ens_df_pwc <- read.csv(file.path(base_dir, "ens_pwc_metrics.csv"))
+    net_cols <- str_replace_all(net_df$network, "-", ".")
+    ens_df_cal <- ens_df_cal %>% mutate(across(net_cols, as.logical))
+    ens_df_pwc <- ens_df_pwc %>% mutate(across(net_cols, as.logical))
+    if (!is.null(excl_networks))
+    {
+        net_df <- net_df %>% filter(!(network %in% excl_networks))
+        excl_networks <- str_replace_all(excl_networks, "-", ".")
+        ens_df_cal <- ens_df_cal %>%
+                        mutate(keep = !as.logical(rowSums(select(., excl_networks)))) %>%
+                        filter(keep == T) %>% select(-one_of(c("keep", excl_networks)))
+        ens_df_pwc <- ens_df_pwc %>% 
+                        mutate(keep = !as.logical(rowSums(select(., excl_networks)))) %>%
+                        filter(keep == T) %>% select(-one_of(c("keep", excl_networks)))
+    }
 
     networks <- net_df$network
 
-    list[ens_df_cal, ens_df_pwc] <- add_combination_metrics(net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_df_pwc)
+    if ("replication" %in% colnames(net_df))
+    {
+        list[ens_df_cal, ens_df_pwc] <- add_combination_metrics_repl(net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_df_pwc)
+    }
+    else
+    {
+        list[ens_df_cal, ens_df_pwc] <- add_combination_metrics(net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_df_pwc)
+    }
 
     ens_pwc_plt_df <- ens_df_pwc # %>% filter(combining_method != "lda")
     ens_cal_plt_df <- ens_df_cal
@@ -38,6 +59,7 @@ load_ens_dfs <- function(base_dir, comb_methods = NULL)
         "logreg", "logreg_sweep_C",
         "logreg_no_interc", "logreg_no_interc_sweep_C",
         "grad_m1", "grad_m2", "grad_bc", "logreg_torch",
+        "logreg_torch_no_interc",
         "random"
         )
         comb_methods <- c(sapply(X = comb_methods, FUN = {
@@ -508,10 +530,10 @@ comp_tables <- function(base_dir, dtset, output_dir = "evaluation_sk", topl_stra
 plot_improvements <- function(
     base_dir, dtset, over = "best", comb_methods = NULL,
     size = c(7, 7), acc_lim = NULL, nll_lim = NULL, ece_lim = NULL,
-    output_dir = "evaluation_sk", topl_strat = NULL)
+    output_dir = "evaluation_sk", topl_strat = NULL, excl_networks = NULL)
 {
     print(paste0("Plotting improvements", ifelse(is.null(topl_strat), "", paste0(" topl_strat: ", topl_strat))))
-    list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir, comb_methods = comb_methods)
+    list[ens_cal_plt_df, ens_pwc_plt_df] <- load_ens_dfs(base_dir = base_dir, comb_methods = comb_methods, excl_networks = excl_networks)
     if (!is.null(topl_strat))
     {
         if (topl_strat == "full")
@@ -526,7 +548,9 @@ plot_improvements <- function(
     }
 
     ens_pwc_plt_df <- ens_pwc_plt_df %>% mutate(
-                    combining_method = recode(combining_method, logreg_torch = "logreg"))
+                    combining_method = recode(combining_method,
+                        logreg_torch = "logreg",
+                        logreg_torch_no_interc = "logreg_no_interc"))
 
     net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
     if (dtset == "IMNET")
@@ -558,6 +582,7 @@ plot_improvements <- function(
             list(metric = "acc5_imp_", name = "presnosť top-5")
         )
     }
+    print(ens_cal_plt_df)
     acc_plots <- list()
     for (i in seq_along(acc_plot_params))
     {
@@ -694,7 +719,13 @@ plot_improvements <- function(
         ece_plot <- ece_plot + coord_cartesian(ylim = ece_lim)
     }
 
-    res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect") #+
+    res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect")
+    if (!is.null(excl_networks))
+    {
+        res_plot <- res_plot + plot_annotation(title = paste0("Excluding", excl_networks))
+    }
+
+    #+
         #plot_annotation(title = paste0(
         #    "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
         #)
@@ -1104,4 +1135,13 @@ plot_cif_ood_classif_eval <- function()
     plot_improvements(base_dir = source_c100, dtset = "C100", output_dir = dest_dir)
 }
 
-plot_cif_ood_classif_eval()
+#plot_cif_ood_classif_eval()
+
+plot_half_cifar_improvements <- function()
+{
+    source <- "/home/mordechaj/school/disertation/data/cifar/half_cif100"
+    dest_dir <- "half_cifar_evaluation"
+    plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir, excl_networks = c("clip_ViT-B-32_LP"))
+}
+
+plot_half_cifar_improvements()
