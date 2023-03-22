@@ -571,6 +571,10 @@ add_combination_metrics_repl <- function(net_df, ens_df_cal, ens_df_pwc)
 add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
 {
   networks <- net_df$network
+  col_n_nets <- str_replace_all(networks, "-", ".")
+
+  ens_df_cal <- ens_df_cal %>% mutate(across(all_of(col_n_nets), ~ as.logical(.x)))
+  ens_df_pwc <- ens_df_pwc %>% mutate(across(all_of(col_n_nets), ~ as.logical(.x)))
 
   acc_cols <- c("acc_min", "acc_max", "acc_avg", "acc_var")
   acck_cols <- c(
@@ -596,16 +600,8 @@ add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
           filter(combination_size == sss) %>%
           pull(combination_id)))
       {
-          cur_nets_vec <- to_vec(
-              for (net in networks) {
-                  if (str_replace_all(net, "-", ".") %in% colnames(ens_df_cal) &&
-                  (ens_df_cal %>%
-                      filter(combination_size == sss & combination_id == ssi) %>%
-                      pull(str_replace_all(net, "-", ".")))[1] == T) {
-                  net
-                  }
-              }
-          )
+          mask <- unlist((ens_df_cal %>% filter(combination_id == ssi & combination_size == sss))[1, col_n_nets])
+          cur_nets_vec <- networks[mask]
           cur_nets <- net_df %>% filter(network %in% cur_nets_vec)
           if (has_acck)
             {
