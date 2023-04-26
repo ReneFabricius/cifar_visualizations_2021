@@ -8,10 +8,11 @@ library(relayer)
 library(patchwork)
 library(xtable)
 library(gsubfn)
+library(coin)
 source("utils.R")
 
-base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
-base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
+base_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c10/0/evaluation_val_train"
+base_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/data_tv_5000_c100/0/evaluation_val_train"
 
 metrics <- c("accuracy", "nll", "ece")
 metric_names <- c(accuracy = "presnosť", nll = "NLL", ece = "ECE",
@@ -47,15 +48,15 @@ load_ens_dfs <- function(base_dir, comb_methods = NULL, excl_networks = NULL, in
                         filter(keep == T) %>% select(-c("keep"))
     }
 
-    networks <- net_df$network
-
     if ("replication" %in% colnames(net_df))
     {
-        list[ens_df_cal, ens_df_pwc] <- add_combination_metrics_repl(net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_df_pwc)
+        list[ens_df_cal, ens_df_pwc] <- add_combination_metrics_repl(
+            net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_df_pwc)
     }
     else
     {
-        list[ens_df_cal, ens_df_pwc] <- add_combination_metrics(net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_df_pwc)
+        list[ens_df_cal, ens_df_pwc] <- add_combination_metrics(
+            net_df = net_df, ens_df_cal = ens_df_cal, ens_df_pwc = ens_df_pwc)
     }
 
     ens_pwc_plt_df <- ens_df_pwc # %>% filter(combining_method != "lda")
@@ -97,9 +98,14 @@ plot_nets <- function(base_dir, dtset, output_dir = "evaluation_sk")
     {
         metric_cols <- c("accuracy", metric_cols)
     }
-    else 
+    else if (dtset == "IMNET") 
     {
        metric_cols <- c("accuracy1", "accuracy5", metric_cols)
+    }
+    else 
+    {
+        metric_cols <- c("accuracy", metric_cols)
+        net_df <- net_df %>% rename("accuracy" = "accuracy1")
     }
 
     if (dtset == "IMNET")
@@ -112,15 +118,28 @@ plot_nets <- function(base_dir, dtset, output_dir = "evaluation_sk")
         cols = all_of(metric_cols),
         names_to = "metric", values_to = "value"
     )
+    net_long <- net_long %>%
+        mutate(metric = factor(metric, levels = metric_cols))
 
-    nets_plot <- ggplot(data = net_long) +
-        geom_col(mapping = aes(x = network, y = value)) +
+    nets_plot <- ggplot(data = net_long)
+
+    if ("replication" %in% names(net_long))
+    {
+        nets_plot <- nets_plot +
+            geom_boxplot(mapping = aes(x = network, y = value, color = network))
+    }
+    else 
+    {
+        nets_plot <- nets_plot +
+        geom_col(mapping = aes(x = network, y = value, color = network))
+    }
+
+    nets_plot <- nets_plot +
         facet_grid(metric ~ ., labeller = labeller(metric = metric_names), scales = "free") +
         xlab("sieť") +
         ylab("hodnota") +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 90)) +
-        ggtitle("Metriky sietí")
+        theme(axis.text.x = element_blank())
 
     plot_name <- file.path(output_dir, paste0(dtset, "_net_metrics.pdf"))
     ggsave(plot = nets_plot, filename = plot_name, device = cairo_pdf)
@@ -586,11 +605,11 @@ plot_improvements <- function(
     big_box_width <- length(levels(ens_pwc_plt_df$combining_method))
     big_box_x <- 1 + (length(levels(ens_pwc_plt_df$combining_method)) - 1) / 2
 
-    processing_top5_acc <- "accuracy5" %in% colnames(ens_pwc_plt_df)
+    processing_top5_acc <- ("accuracy5" %in% colnames(ens_pwc_plt_df)) & (dtset == "IMNET")
 
     if (!processing_top5_acc)
     {
-        acc_plot_params <- list(list(metric = "acc_imp_", name = "presnosť"))
+        acc_plot_params <- list(list(metric = "acc1_imp_", name = "presnosť"))
     }
     else
     {
@@ -756,6 +775,7 @@ plot_improvements <- function(
     }
 
     res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect")
+
     if (!is.null(excl_networks))
     {
         res_plot <- res_plot + plot_annotation(title = paste(c("Excluding", excl_networks), collapse = " "))
@@ -1092,8 +1112,331 @@ plot_improvements_topls <- function(base_dir, dtset, over = "best", comb_methods
 
         plot_name <- file.path(output_dir, paste0(dtset, "_ensemble_improvements_over_", over, "_co_m_", co_m, ".pdf"))
         ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 9, height = 5)
-
     }
+}
+
+plot_improvements_size_split <- function(
+    source_dir, dtset, over = "best", comb_methods = NULL,
+    size = c(7, 7), acc_lim = NULL, nll_lim = NULL, ece_lim = NULL,
+    output_dir = "evaluation_sk", topl_strategy = "none", excl_nets = NULL,
+    incl_nets = NULL, configs = NULL)
+{
+    print(paste0(
+        "Plotting size split improvements",
+        ifelse(topl_strategy == "none", "", paste0(" topl_strat: ", topl_strat))))
+    list[cal_df, pwc_df] <- load_ens_dfs(
+        base_dir = source_dir,
+        excl_networks = excl_nets,
+        incl_networks = incl_nets
+    )
+    if (topl_strategy != "none")
+    {
+        if (topl_strategy == "full")
+        {
+            pwc_df <- pwc_df %>% filter(topl == max(topl))
+        }
+        else if (topl_strategy == "fast")
+        {
+            pwc_df <- pwc_df %>% filter(topl < max(topl))
+        }
+        else if (topl_strategy == "compare")
+        {
+            pwc_df <- pwc_df %>% mutate(topl_strat = ifelse(topl == max(topl), "", "fast"))
+        }
+        pwc_df <- droplevels(pwc_df)
+    }
+
+    cal_df <- cal_df %>% mutate(combination_size = factor(combination_size))
+    pwc_df <- pwc_df %>% mutate(combination_size = factor(combination_size))
+
+    pwc_df <- pwc_df %>% mutate(
+                    combining_method = recode(combining_method,
+                        logreg_torch = "logreg",
+                        logreg_torch_no_interc = "logreg_no_interc")) %>%
+                        mutate(
+                            method = paste(combining_method, coupling_method, sep = " + ")
+                        ) %>%
+                        filter(method %in% names(configs)) %>%
+                        mutate(method = recode(method, !!!configs)) %>%
+                        select(-c(combining_method, coupling_method, topl, prediction_time))
+
+    if (topl_strategy == "compare")
+    {
+        pwc_df <- pwc_df %>% 
+                    mutate(method = trimws(paste(method, topl_strat, sep = " ")))
+    }
+
+    cal_df <- cal_df %>% 
+        mutate(method = recode(calibrating_method, "TemperatureScaling" = "baseline ansámbel")) %>%
+        select(-c(calibrating_method))
+
+    if (topl_strategy != "compare" & over != "baseline")
+    {
+        ens_df <- rbind(pwc_df, cal_df)
+    }
+    else 
+    {
+       ens_df <- pwc_df
+    }
+
+    processing_top5_acc <- ("accuracy5" %in% colnames(ens_df)) & (dtset == "IMNET")
+
+    if (!processing_top5_acc)
+    {
+        acc_plot_params <- list(list(metric = "acc1_imp_", name = "presnosť"))
+    }
+    else
+    {
+        acc_plot_params <- list(
+            list(metric = "acc1_imp_", name = "presnosť top-1"),
+            list(metric = "acc5_imp_", name = "presnosť top-5")
+        )
+    }
+
+    zero_line <- data.frame(interc = 0.0, combination_size = levels(ens_df$combination_size))
+
+    acc_plots <- list()
+    for (i in seq_along(acc_plot_params))
+    {
+        acc_plots[[i]] <- ggplot() +
+            geom_hline(data = zero_line, mapping = aes(yintercept = interc), color = "red") +
+            (
+                geom_boxplot(
+                data = ens_df,
+                mapping = aes(
+                    x = combination_size, y = !! sym(paste0(acc_plot_params[[i]][["metric"]], over)),
+                    colour2 = method
+                )
+                ) %>%
+                rename_geom_aes(new_aes = c("colour" = "colour2"))
+            ) +
+            scale_colour_brewer(
+                aesthetics = "colour2", palette = 2,
+                name = "klasifikačná metóda", type = "qual"
+            ) +
+            ylab(acc_plot_params[[i]][["name"]]) +
+            scale_color_manual(values = c("black"), name = "baseline") +
+            theme_classic() +
+            theme(
+                axis.title.x = element_blank()
+            )
+    }
+
+    if (processing_top5_acc)
+    {
+        acc_plot <- acc_plots[[1]] / acc_plots[[2]]
+    }
+    else 
+    {
+        acc_plot <- acc_plots[[1]]
+    }
+
+    if (!is.null(acc_lim))
+    {
+        acc_plot <- acc_plot + coord_cartesian(ylim = acc_lim)
+    }
+
+    nll_plot <- ggplot() +
+    geom_hline(data = zero_line, mapping = aes(yintercept = interc), color = "red") +
+    (
+        geom_boxplot(
+        data = ens_df,
+        mapping = aes(
+            x = combination_size, y = !! sym(paste0("nll_imp_", over)),
+            colour2 = method
+        )
+        ) %>%
+        rename_geom_aes(new_aes = c("colour" = "colour2"))
+    ) +
+    scale_colour_brewer(
+        aesthetics = "colour2", palette = 2,
+        name = "klasifikačná metóda", type = "qual"
+    ) +
+    ylab("NLL") +
+    scale_color_manual(values = c("black"), name = "baseline") +
+    theme_classic() +
+    theme(
+        axis.title.x = element_blank()
+    )
+
+    if (!is.null(nll_lim))
+    {
+        nll_plot <- nll_plot + coord_cartesian(ylim = nll_lim)
+    }
+
+    ece_plot <- ggplot() +
+    geom_hline(data = zero_line, mapping = aes(yintercept = interc), color = "red") +
+    (
+        geom_boxplot(
+        data = ens_df,
+        mapping = aes(
+            x = combination_size, y = !! sym(paste0("ece_imp_", over)),
+            colour2 = method
+        ),
+        ) %>%
+        rename_geom_aes(new_aes = c("colour" = "colour2"))
+    ) +
+    scale_colour_brewer(
+        aesthetics = "colour2", palette = 2,
+        name = "klasifikačná metóda", type = "qual"
+    ) +
+    ylab("ECE") +
+    xlab("veľkosť ansámblu") +
+    scale_color_manual(values = c("black"), name = "baseline") +
+    theme_classic()
+
+    if (!is.null(ece_lim))
+    {
+        ece_plot <- ece_plot + coord_cartesian(ylim = ece_lim)
+    }
+
+    res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect")
+
+    if (!is.null(excl_nets))
+    {
+        res_plot <- res_plot + plot_annotation(title = paste(c("Excluding", excl_nets), collapse = " "))
+    }
+
+    #+
+        #plot_annotation(title = paste0(
+        #    "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
+        #)
+
+    plot_name <- file.path(
+        output_dir,
+        paste0(
+            dtset, "_ensemble_improvements_per_size_over_", over,
+            "_topl_",
+            ifelse(topl_strategy == "none", "full", topl_strat),
+            ifelse(is.null(excl_nets), "", paste0("_excluding_", paste(excl_nets, collapse = "+"))),
+            ifelse(is.null(incl_nets), "", paste0("_including_", paste(incl_nets, collapse = "+"))),
+            ".pdf"))
+    ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = size[1], height = size[2])
+}
+
+improvement_tests <- function(
+    source_dir, output_dir, dtset = "IMN",
+    excl_nets = NULL, incl_nets = NULL,
+    topl_strategy = "none", configs = NULL)
+{
+    print("Performing tests")
+    list[cal_df, pwc_df] <- load_ens_dfs(
+        base_dir = source_dir,
+        excl_networks = excl_nets,
+        incl_networks = incl_nets)
+
+    if (topl_strategy != "none")
+    {
+        if (topl_strategy == "full")
+        {
+            pwc_df <- pwc_df %>% filter(topl == max(topl))
+        }
+        else if (topl_strategy == "fast")
+        {
+            pwc_df <- pwc_df %>% filter(topl < max(topl))
+        }
+
+        pwc_df <- droplevels(pwc_df)
+    }
+
+    cal_df <- cal_df %>% mutate(combination_size = factor(combination_size))
+    pwc_df <- pwc_df %>% mutate(combination_size = factor(combination_size))
+
+    pwc_df <- pwc_df %>% mutate(
+                    combining_method = recode(combining_method,
+                        logreg_torch = "logreg",
+                        logreg_torch_no_interc = "logreg_no_interc")) %>%
+                        mutate(
+                            method = paste(combining_method, coupling_method, sep = " + ")
+                        )
+    if (!is.null(configs))
+    {
+        pwc_df <- pwc_df %>% filter(method %in% names(configs)) %>%
+                        mutate(method = recode(method, !!!configs))
+    }
+
+    if (dtset == "IMN")
+    {
+        metrics <- c("accuracy1", "accuracy5", "nll", "ece")
+    }
+    else 
+    {
+        metrics <- c("accuracy1", "nll", "ece")
+    }
+    
+    ident_cols <- c("combination_id")
+
+    if ("replication" %in% colnames(pwc_df))
+    {
+        ident_cols <- c(ident_cols, "replication")
+    }
+
+    test_df <- data.frame(
+        combining_method = c(), coupling_method = c(), combination_size = c(), metric = c(), p.val = c())
+
+    for (co_m in unique(pwc_df$combining_method))
+    {
+        print(paste0("Processing combining method ", co_m))
+        co_pwc_df <- pwc_df %>% filter(combining_method == co_m)
+        for (cp_m in unique(co_pwc_df$coupling_method))
+        {
+            print(paste0("Processing coupling method ", cp_m))
+            cp_pwc_df <- co_pwc_df %>% filter(coupling_method == cp_m)
+            for (cs in unique(cp_pwc_df$combination_size))
+            {
+                print("Processing combination size ", cs)
+                cs_pwc_df <- cp_pwc_df %>% filter(combination_size == cs)
+                print(paste0("Number of samples: ", nrow(cs_pwc_df)))
+                if (nrow(cs_pwc_df) < 10)
+                {
+                    next
+                }
+                for (met in metrics)
+                {
+                    print(paste0("Processing metric ", met))
+                    pwc_res <- cs_pwc_df %>% select(all_of(c(ident_cols, met))) %>% 
+                        mutate(
+                            method = factor("WLE"))
+                    
+                    cal_res <- cal_df %>% filter(combination_size == cs) %>%
+                        select(all_of(c(ident_cols, met))) %>%
+                        mutate(
+                            method = factor("BSL"))
+
+                    cs_data <- rbind(pwc_res, cal_res)
+                    if ("replication" %in% colnames(cs_data))
+                    {
+                        cs_data <- cs_data %>%
+                            mutate(combination_id = factor(combination_id + 1000 * replication)) %>%
+                            select(-c(replication))
+                    }
+
+                    test <- symmetry_test(
+                        formula = as.formula(paste0(met, " ~ method | combination_id")),
+                        data = cs_data)
+
+
+                    test_row <- list(
+                        "combining_method" = co_m, "coupling_method" = cp_m,
+                        "combination_size" = cs, "metric" = met, p.val = pvalue(test))
+
+                    test_df <- rbind(test_df, test_row)
+                }
+            }
+        }
+    }
+
+     file <- file.path(
+        output_dir,
+        paste0(
+            dtset, "_p_values_",
+            "_topl_",
+            ifelse(topl_strategy == "none", "full", topl_strat),
+            ifelse(is.null(excl_nets), "", paste0("_excluding_", paste(excl_nets, collapse = "+"))),
+            ifelse(is.null(incl_nets), "", paste0("_including_", paste(incl_nets, collapse = "+"))),
+            ".csv"))
+    
+    write.csv(test_df, file, row.names = FALSE)
 }
 
 plot_plots <- function(base_dir, cifar)
@@ -1131,10 +1474,10 @@ plot_plots <- function(base_dir, cifar)
     )
     subs <- list("10" = subs_c10, "100" = subs_c100)
 
-    plot_nets(base_dir = base_dir, dtset = paste0("C", cifar))
-    plot_ensembles(base_dir = base_dir, dtset = paste0("C", cifar))
-    plot_dependencies(base_dir = base_dir, dtset = paste0("C", cifar))
-    comp_tables(base_dir = base_dir, dtset = paste0("C", cifar))
+    #plot_nets(base_dir = base_dir, dtset = paste0("C", cifar))
+    #plot_ensembles(base_dir = base_dir, dtset = paste0("C", cifar))
+    #plot_dependencies(base_dir = base_dir, dtset = paste0("C", cifar))
+    #comp_tables(base_dir = base_dir, dtset = paste0("C", cifar))
     plot_improvements(
         base_dir = base_dir, dtset = paste0("C", cifar),
         comb_methods = subs[[as.character(cifar)]])
@@ -1169,7 +1512,7 @@ plot_imnet_eval <- function()
         split_ens_sizes = T, size = c(7, 4*7))
 }
 
-plot_imnet_eval()
+#plot_imnet_eval()
 
 plot_cif_ood_classif_eval <- function()
 {
@@ -1186,6 +1529,45 @@ plot_half_cifar_improvements <- function()
 {
     source <- "/home/mordechaj/school/disertation/data/cifar/half_cif100"
     dest_dir <- "half_cifar_evaluation"
+
+    improvement_tests(
+        source_dir = source, output_dir = dest_dir, dtset = "C100",
+    )
+
+    plot_improvements_size_split(
+        source_dir = source, dtset = "C100", output_dir = dest_dir,
+        configs = list(
+            "grad_m2 + m2" = "grad_m2 + m2",
+            "logreg_no_interc + m1" = "logreg_no_interc + m1",
+            "logreg + m1" = "logreg + m1"))
+
+    plot_improvements_size_split(
+        source_dir = source, dtset = "C100", output_dir = dest_dir,
+        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
+        excl_nets = c("clip_ViT-B-32_LP"))
+
+    plot_improvements_size_split(
+        source_dir = source, dtset = "C100", output_dir = dest_dir,
+        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
+        incl_nets = c("clip_ViT-B-32_LP"))
+
+    plot_improvements_size_split(
+        source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
+        configs = list(
+            "grad_m2 + m2" = "grad_m2 + m2",
+            "logreg_no_interc + m1" = "logreg_no_interc + m1",
+            "logreg + m1" = "logreg + m1"))
+
+    plot_improvements_size_split(
+        source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
+        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
+        excl_nets = c("clip_ViT-B-32_LP"))
+
+    plot_improvements_size_split(
+        source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
+        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
+        incl_nets = c("clip_ViT-B-32_LP"))
+
     plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir)
     plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
         excl_networks = c("clip_ViT-B-32_LP"))
@@ -1201,9 +1583,10 @@ plot_half_cifar_improvements <- function()
         incl_networks = c("clip_ViT-B-32_LP"),
         split_ens_sizes = T, size = c(7, 3*7))
 
+    plot_nets(base_dir = source, dtset = "C100", output_dir = dest_dir)
 }
 
-#plot_half_cifar_improvements()
+plot_half_cifar_improvements()
 
 plot_new_cifar_improvements <- function()
 {
