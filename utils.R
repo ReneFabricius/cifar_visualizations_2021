@@ -464,6 +464,10 @@ add_combination_metrics_repl <- function(net_df, ens_df_cal, ens_df_pwc)
 {
   # An ugly copy, may need to rework one day
   networks <- net_df$network
+  col_n_nets <- str_replace_all(networks, "-", ".")
+
+  ens_df_cal <- ens_df_cal %>% mutate(across(all_of(col_n_nets), ~ as.logical(.x)))
+  ens_df_pwc <- ens_df_pwc %>% mutate(across(all_of(col_n_nets), ~ as.logical(.x)))
 
   acc_cols <- c("acc_min", "acc_max", "acc_avg", "acc_var")
   acck_cols <- c(
@@ -493,16 +497,10 @@ add_combination_metrics_repl <- function(net_df, ens_df_cal, ens_df_pwc)
             filter(combination_size == sss & replication == repli) %>%
             pull(combination_id)))
         {
-            cur_nets_vec <- to_vec(
-                for (net in networks) {
-                    if (str_replace_all(net, "-", ".") %in% colnames(ens_df_cal) &&
-                    (ens_df_cal %>%
-                        filter(combination_size == sss & combination_id == ssi & replication == repli) %>%
-                        pull(str_replace_all(net, "-", ".")))[1] == T) {
-                    net
-                    }
-                }
-            )
+			      mask <- unlist((ens_df_cal %>% filter(
+              combination_id == ssi & combination_size == sss & replication == repli))[1, col_n_nets])
+			      cur_nets_vec <- networks[mask]
+            
             cur_nets <- net_df %>% filter(network %in% cur_nets_vec & replication == repli)
             if (has_acck)
               {
@@ -535,38 +533,71 @@ add_combination_metrics_repl <- function(net_df, ens_df_cal, ens_df_pwc)
     ens_df_cal$acc5_imp_avg <- ens_df_cal$accuracy5 - ens_df_cal$acc5_avg
     ens_df_cal$acc1_imp_best <- ens_df_cal$accuracy1 - ens_df_cal$acc1_max
     ens_df_cal$acc5_imp_best <- ens_df_cal$accuracy5 - ens_df_cal$acc5_max
+    ens_df_cal$acc1_imp_baseline <- 0
+    ens_df_cal$acc5_imp_baseline <- 0
   }
   else 
   {
     ens_df_cal$acc_imp_avg <- ens_df_cal$accuracy - ens_df_cal$acc_avg
     ens_df_cal$acc_imp_best <- ens_df_cal$accuracy - ens_df_cal$acc_max
+    ens_df_cal$acc_imp_baseline <- 0
   }
   ens_df_cal$nll_imp_avg <- -(ens_df_cal$nll - ens_df_cal$nll_avg)
   ens_df_cal$nll_imp_best <- -(ens_df_cal$nll - ens_df_cal$nll_min)
+  ens_df_cal$nll_imp_baseline <- 0
   ens_df_cal$ece_imp_avg <- -(ens_df_cal$ece - ens_df_cal$ece_avg)
   ens_df_cal$ece_imp_best <- -(ens_df_cal$ece - ens_df_cal$ece_min)
+  ens_df_cal$ece_imp_baseline <- 0
 
   ens_df_pwc <- merge(ens_df_pwc, comb_stats_df)
+
+  metric_cols <- c("nll", "ece")
+  if (has_acck)
+  {
+    metric_cols <- c("accuracy1", "accuracy5", metric_cols)
+  }
+  else 
+  {
+     metric_cols <- c("accuracy", metric_cols)
+  }
+
+  ens_df_pwc <- ens_df_pwc %>% left_join(
+    ens_df_cal %>% select(c("combination_id", "replication", metric_cols)),
+    by = c("combination_id", "replication"),
+    suffix = c("", ".cal")
+  )
+
   if (has_acck)
   {
     ens_df_pwc$acc1_imp_avg <- ens_df_pwc$accuracy1 - ens_df_pwc$acc1_avg
     ens_df_pwc$acc5_imp_avg <- ens_df_pwc$accuracy5 - ens_df_pwc$acc5_avg
     ens_df_pwc$acc1_imp_best <- ens_df_pwc$accuracy1 - ens_df_pwc$acc1_max
     ens_df_pwc$acc5_imp_best <- ens_df_pwc$accuracy5 - ens_df_pwc$acc5_max
+    ens_df_pwc$acc1_imp_baseline <- ens_df_pwc$accuracy1 - ens_df_pwc$accuracy1.cal
+    ens_df_pwc$acc5_imp_baseline <- ens_df_pwc$accuracy5 - ens_df_pwc$accuracy5.cal
   }
   else 
   {
     ens_df_pwc$acc_imp_avg <- ens_df_pwc$accuracy - ens_df_pwc$acc_avg
     ens_df_pwc$acc_imp_best <- ens_df_pwc$accuracy - ens_df_pwc$acc_max
+    ens_df_pwc$acc_imp_baseline <- ens_df_pwc$accuracy - ens_df_pwc$accuracy.cal
   }
   ens_df_pwc$nll_imp_avg <- -(ens_df_pwc$nll - ens_df_pwc$nll_avg)
   ens_df_pwc$nll_imp_best <- -(ens_df_pwc$nll - ens_df_pwc$nll_min)
+  ens_df_pwc$nll_imp_baseline <- -(ens_df_pwc$nll - ens_df_pwc$nll.cal)
   ens_df_pwc$ece_imp_avg <- -(ens_df_pwc$ece - ens_df_pwc$ece_avg)
   ens_df_pwc$ece_imp_best <- -(ens_df_pwc$ece - ens_df_pwc$ece_min)
+  ens_df_pwc$ece_imp_baseline <- -(ens_df_pwc$ece - ens_df_pwc$ece.cal)
+
+  cal_metric_cols <- sapply(
+    metric_cols,
+    FUN = function(s) {paste0(s, ".cal")}
+  )
+  ens_df_pwc <- ens_df_pwc %>% select(-cal_metric_cols)
 
   return(list(ens_df_cal, ens_df_pwc))
- 
 }
+
 
 add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
 {
@@ -633,34 +664,67 @@ add_combination_metrics <- function(net_df, ens_df_cal, ens_df_pwc)
     ens_df_cal$acc5_imp_avg <- ens_df_cal$accuracy5 - ens_df_cal$acc5_avg
     ens_df_cal$acc1_imp_best <- ens_df_cal$accuracy1 - ens_df_cal$acc1_max
     ens_df_cal$acc5_imp_best <- ens_df_cal$accuracy5 - ens_df_cal$acc5_max
+    ens_df_cal$acc1_imp_baseline <- 0
+    ens_df_cal$acc5_imp_baseline <- 0
   }
   else 
   {
     ens_df_cal$acc_imp_avg <- ens_df_cal$accuracy - ens_df_cal$acc_avg
     ens_df_cal$acc_imp_best <- ens_df_cal$accuracy - ens_df_cal$acc_max
+    ens_df_cal$acc_imp_baseline <- 0
   }
   ens_df_cal$nll_imp_avg <- -(ens_df_cal$nll - ens_df_cal$nll_avg)
   ens_df_cal$nll_imp_best <- -(ens_df_cal$nll - ens_df_cal$nll_min)
+  ens_df_cal$nll_imp_baseline <- 0
   ens_df_cal$ece_imp_avg <- -(ens_df_cal$ece - ens_df_cal$ece_avg)
   ens_df_cal$ece_imp_best <- -(ens_df_cal$ece - ens_df_cal$ece_min)
+  ens_df_cal$ece_imp_baseline <- 0
 
   ens_df_pwc <- merge(ens_df_pwc, comb_stats_df)
+
+  metric_cols <- c("nll", "ece")
+  if (has_acck)
+  {
+    metric_cols <- c("accuracy1", "accuracy5", metric_cols)
+  }
+  else 
+  {
+     metric_cols <- c("accuracy", metric_cols)
+  }
+
+  ens_df_pwc <- ens_df_pwc %>% left_join(
+    ens_df_cal %>% select(c("combination_id", metric_cols)),
+    by = c("combination_id"),
+    suffix = c("", ".cal")
+  )
+
   if (has_acck)
   {
     ens_df_pwc$acc1_imp_avg <- ens_df_pwc$accuracy1 - ens_df_pwc$acc1_avg
     ens_df_pwc$acc5_imp_avg <- ens_df_pwc$accuracy5 - ens_df_pwc$acc5_avg
     ens_df_pwc$acc1_imp_best <- ens_df_pwc$accuracy1 - ens_df_pwc$acc1_max
     ens_df_pwc$acc5_imp_best <- ens_df_pwc$accuracy5 - ens_df_pwc$acc5_max
+    ens_df_pwc$acc1_imp_baseline <- ens_df_pwc$accuracy1 - ens_df_pwc$accuracy1.cal
+    ens_df_pwc$acc5_imp_baseline <- ens_df_pwc$accuracy5 - ens_df_pwc$accuracy5.cal
   }
   else 
   {
     ens_df_pwc$acc_imp_avg <- ens_df_pwc$accuracy - ens_df_pwc$acc_avg
     ens_df_pwc$acc_imp_best <- ens_df_pwc$accuracy - ens_df_pwc$acc_max
+    ens_df_pwc$acc_imp_baseline <- ens_df_pwc$accuracy - ens_df_pwc$accuracy.cal
   }
   ens_df_pwc$nll_imp_avg <- -(ens_df_pwc$nll - ens_df_pwc$nll_avg)
   ens_df_pwc$nll_imp_best <- -(ens_df_pwc$nll - ens_df_pwc$nll_min)
+  ens_df_pwc$nll_imp_baseline <- -(ens_df_pwc$nll - ens_df_pwc$nll.cal)
   ens_df_pwc$ece_imp_avg <- -(ens_df_pwc$ece - ens_df_pwc$ece_avg)
   ens_df_pwc$ece_imp_best <- -(ens_df_pwc$ece - ens_df_pwc$ece_min)
+  ens_df_pwc$ece_imp_baseline <- -(ens_df_pwc$ece - ens_df_pwc$ece.cal)
+
+  cal_metric_cols <- sapply(
+    metric_cols,
+    FUN = function(s) {paste0(s, ".cal")}
+  )
+  ens_df_pwc <- ens_df_pwc %>% select(-cal_metric_cols)
 
   return(list(ens_df_cal, ens_df_pwc))
 }
