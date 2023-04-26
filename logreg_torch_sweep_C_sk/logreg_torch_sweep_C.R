@@ -20,6 +20,7 @@ eval_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/d
 
 plot_plots <- function(base_dir, eval_dir, cifar)
 {
+    improvement_over <- "best"
     metrics <- c("acc", "nll", "ece")
     metric_names <- c(accuracy = "presnosť", nll = "NLL", ece = "ECE")
 
@@ -52,7 +53,7 @@ plot_plots <- function(base_dir, eval_dir, cifar)
         "nll" = list("10" = c(-0.1, 0.12), "100" = c(-1.8, 0.4)),
         "ece" = list("10" = c(-0.2, 0.07), "100" = c(-0.75, 0.15)))
     limits_single <- list(
-        "acc" = list("10" = c(0.0, 0.03), "100" = c(0.0, 0.09)),
+        "acc" = list("10" = c(0.0, 0.03), "100" = c(-0.02, 0.075)),
         "nll" = list("10" = c(-0.05, 0.12), "100" = c(-0.5, 0.5)),
         "ece" = list("10" = c(-0.1, 0.07), "100" = c(-0.5, 0.15)))
 
@@ -66,20 +67,25 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                     geom_boxplot(
                         data = ens_eval_df_pwc,
                         mapping = aes_string(
-                            y = paste0(met, "_imp_avg"),
+                            y = paste0(met, "_imp_", improvement_over),
                             color = shQuote("sweep_C")),
                         width = C_range,
                         alpha = 0.5) +
                     geom_boxplot(
                         mapping = aes_string(
                             x = "C",
-                            y = paste0(met, "_imp_avg"),
+                            y = paste0(met, "_imp_", improvement_over),
                             group = "C"),
                         alpha = 0.5) +
                     facet_rep_grid(method ~ ., repeat.tick.labels = TRUE, scales = "free_x") +
                     scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
                     coord_cartesian(ylim = limits[[met]][[as.character(cifar)]]) +
-                    ylab(paste0("Zlepšenie metriky ", metric_names[met_i], " oproti priemeru sietí")) +
+                    ylab(paste0(
+                        "Zlepšenie metriky ", metric_names[met_i],
+                        " oproti ", ifelse(
+                            improvement_over == "avg",
+                            "priemeru sietí",
+                            "najlepšej sieti"))) +
                     scale_colour_discrete(name = "") +
                     ggtitle(paste0("Cifar ", cifar)) +
                     theme_bw() +
@@ -89,7 +95,7 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                         panel.grid.minor = element_blank())
 
 
-        file_name <- paste0("logregt_reg_c", cifar, "_", met, ".pdf")
+        file_name <- paste0("logregt_reg_c", cifar, "_", met, "_imp_over_", improvement_over, ".pdf")
         ggsave(filename = file.path("logreg_torch_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf, height = 40)
         #dev.off()
 
@@ -99,20 +105,25 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                         data = ens_eval_df_pwc %>% filter(str_split(method, pattern = fixed(" + "),
                         simplify = TRUE)[, 1] == "logreg"),
                         mapping = aes_string(
-                            y = paste0(met, "_imp_avg"),
+                            y = paste0(met, "_imp_", improvement_over),
                             color = shQuote("sweep_C")),
                         width = C_range,
                         alpha = 0.5) +
                     geom_boxplot(
                         mapping = aes_string(
                             x = "C",
-                            y = paste0(met, "_imp_avg"),
+                            y = paste0(met, "_imp_", improvement_over),
                             group = "C"),
                         alpha = 0.5) +
                     facet_rep_grid(method ~ ., repeat.tick.labels = TRUE, scales = "free_x") +
                     scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
                     coord_cartesian(ylim = limits_single[[met]][[as.character(cifar)]]) +
-                    ylab(paste0("Zlepšenie metriky ", metric_names[met_i], " oproti priemeru sietí")) +
+                    ylab(paste0(
+                        "Zlepšenie metriky ", metric_names[met_i],
+                        " oproti ", ifelse(
+                            improvement_over == "avg",
+                            "priemeru sietí",
+                            "najlepšej sieti"))) +
                     scale_colour_discrete(name = "") +
                     theme_bw() +
                     theme(
@@ -121,7 +132,7 @@ plot_plots <- function(base_dir, eval_dir, cifar)
                         panel.grid.minor = element_blank())
 
 
-        file_name <- paste0("print_logregt_reg_c", cifar, "_", met, ".pdf")
+        file_name <- paste0("print_logregt_reg_c", cifar, "_", met, "_imp_over_", improvement_over, ".pdf")
         ggsave(filename = file.path("logreg_torch_sweep_C_sk", file_name), plot = metric_plot, device = cairo_pdf, height = 6)
         #dev.off()
     }
