@@ -139,7 +139,10 @@ plot_nets <- function(base_dir, dtset, output_dir = "evaluation_sk")
         xlab("sieť") +
         ylab("hodnota") +
         theme_bw() +
-        theme(axis.text.x = element_blank())
+        theme(
+            axis.text.x = element_blank(),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())
 
     plot_name <- file.path(output_dir, paste0(dtset, "_net_metrics.pdf"))
     ggsave(plot = nets_plot, filename = plot_name, device = cairo_pdf)
@@ -1355,13 +1358,12 @@ improvement_tests <- function(
                         mutate(method = recode(method, !!!configs))
     }
 
+    metrics <- c("accuracy1", "nll", "ece")
+    prefference <- c("accuracy1" = 1, "accuracy5" = 1, "nll" = -1, "ece" = -1)
+    signif <- 0.05
     if (dtset == "IMN")
     {
-        metrics <- c("accuracy1", "accuracy5", "nll", "ece")
-    }
-    else 
-    {
-        metrics <- c("accuracy1", "nll", "ece")
+        metrics <- c("accuracy5", metrics)
     }
     
     ident_cols <- c("combination_id")
@@ -1395,15 +1397,15 @@ improvement_tests <- function(
                 {
                     print(paste0("Processing metric ", met))
                     pwc_res <- cs_pwc_df %>% select(all_of(c(ident_cols, met))) %>% 
-                        mutate(
-                            method = factor("WLE"))
+                        mutate(method = "WLE")
                     
                     cal_res <- cal_df %>% filter(combination_size == cs) %>%
                         select(all_of(c(ident_cols, met))) %>%
-                        mutate(
-                            method = factor("BSL"))
+                        mutate(method = "BSL")
 
                     cs_data <- rbind(pwc_res, cal_res)
+                    cs_data <- cs_data %>% mutate(method = factor(method, levels = c("WLE", "BSL")))
+
                     if ("replication" %in% colnames(cs_data))
                     {
                         cs_data <- cs_data %>%
@@ -1413,12 +1415,30 @@ improvement_tests <- function(
 
                     test <- symmetry_test(
                         formula = as.formula(paste0(met, " ~ method | combination_id")),
-                        data = cs_data)
+                        data = cs_data,
+                        distribution = "approximate")
 
+                    pval <- pvalue(test)
+                    win <- ""
+                    if (pval < signif)
+                    {
+                        cs_means <- cs_data %>% group_by(method) %>%
+                            summarize(mean_met = mean(!! sym(met)), .groups = "drop")
+                        
+                        means <- cs_means$mean_met
+                        names(means) <- cs_means$method
+                        if (prefference[met] * (means["WLE"] - means["BSL"]) > 0)
+                        {
+                            win <- "WLE"
+                        }
+                        else {
+                           win <- "BSL"
+                        }
+                    }
 
                     test_row <- list(
                         "combining_method" = co_m, "coupling_method" = cp_m,
-                        "combination_size" = cs, "metric" = met, p.val = pvalue(test))
+                        "combination_size" = cs, "metric" = met, p.val = pval, better_method = win)
 
                     test_df <- rbind(test_df, test_row)
                 }
@@ -1538,8 +1558,7 @@ plot_half_cifar_improvements <- function()
         source_dir = source, dtset = "C100", output_dir = dest_dir,
         configs = list(
             "grad_m2 + m2" = "grad_m2 + m2",
-            "logreg_no_interc + m1" = "logreg_no_interc + m1",
-            "logreg + m1" = "logreg + m1"))
+            "logreg_no_interc + m1" = "logreg_no_interc + m1"))
 
     plot_improvements_size_split(
         source_dir = source, dtset = "C100", output_dir = dest_dir,
@@ -1555,8 +1574,7 @@ plot_half_cifar_improvements <- function()
         source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
         configs = list(
             "grad_m2 + m2" = "grad_m2 + m2",
-            "logreg_no_interc + m1" = "logreg_no_interc + m1",
-            "logreg + m1" = "logreg + m1"))
+            "logreg_no_interc + m1" = "logreg_no_interc + m1"))
 
     plot_improvements_size_split(
         source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
