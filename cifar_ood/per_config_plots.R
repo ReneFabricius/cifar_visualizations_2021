@@ -14,11 +14,11 @@ source("utils.R")
 
 np <- import("numpy")
 
-C10_labels <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100/B16/test_labels.npy"
-C100_labels <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10/B16/test_labels.npy"
-cifar_data <- "D:/skola/1/weighted_ensembles/tests/test_cifar_2021/data/cifar_data"
+C10_labels <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100/B16/test_labels.npy"
+C100_labels <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10/B16/test_labels.npy"
+cifar_data <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/cifar_data"
 
-plot_per_config <- function(dir, dts, outputs_folder = "cifar_ood")
+plot_per_config <- function(dir, dts, outputs_folder = "cifar_ood_new")
 {
     files <- find_files_by_ptrn(dir = dir, ptrn = list(
         unc_ind = "pwc_ens_test_unc",
@@ -59,7 +59,7 @@ plot_per_config <- function(dir, dts, outputs_folder = "cifar_ood")
         print(plot)
     }
 
-    plot_msp_unc_distribution <- function(x, outputs_folder = "cifar_ood")
+    plot_msp_unc_distribution <- function(x, outputs_folder = "cifar_ood_new")
     {
         id_unc <- np$load(file.path(dir, x["unc_ind"]))
         ood_unc <- np$load(file.path(dir, x["unc_ood"]))
@@ -115,8 +115,9 @@ plot_per_config <- function(dir, dts, outputs_folder = "cifar_ood")
     apply(configs, 1, process_configuration, outputs_folder = outputs_folder)
 }
 
-base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
-base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
+base_dir_C10 <- "/home/mordechaj/school/disertation/data/cifar_ood/C10vsC100_ens" 
+base_dir_C100 <- "/home/mordechaj/school/disertation/data/cifar_ood/C100vsC10_ens" 
+
 
 plot_per_config(base_dir_C10, dts = "C10vC100")
 plot_per_config(base_dir_C100, dts = "C100vC10")

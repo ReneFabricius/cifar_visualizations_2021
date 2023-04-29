@@ -20,7 +20,7 @@ C10_labels <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vs
 C100_labels <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10/B16/test_labels.npy"
 cifar_data <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_2021/data/cifar_data"
 
-plot_select_configs <- function(dir, dts, sel_configs, outputs_folder = "cifar_ood/print")
+plot_select_configs <- function(dir, dts, sel_configs, outputs_folder = "cifar_ood_new/print")
 {
     files <- find_files_by_ptrn(dir = dir, ptrn = list(
         unc_ind = "pwc_ens_test_unc",
@@ -162,19 +162,21 @@ plot_select_configs <- function(dir, dts, sel_configs, outputs_folder = "cifar_o
 
 conf_10v100 <- list(
     list(
-        config = list(combining_method = "random", coupling_method = "bc", nets = "B16+M_B16+R101x3+R50x1+R50_B16"),
+        config = list(
+            combining_method = "logreg_torch_no_interc", coupling_method = "bc",
+            nets = "R50x1+R101x3+R50_B16+B16+M_B16"),
         plots = list(
             list(what = "plot_uncerts", args = list(width = 7, height = 7))
             )
     ),
     list(
-        config = list(combining_method = "cal_average", coupling_method = "m2", nets = "B16+M_B16"),
+        config = list(combining_method = "logreg_torch_no_interc", coupling_method = "m2", nets = "R50x1+R101x3+R50_B16+B16+M_B16"),
         plots = list(
             list(what = "plot_per_cl_unc", args = list(width = 7, height = 7))
             )
     ),
     list(
-        config = list(combining_method = "logreg_torch", coupling_method = "m2", nets = "B16+M_B16+R101x3+R50x1+R50_B16"),
+        config = list(combining_method = "logreg_torch_no_interc", coupling_method = "m2", nets = "R50x1+R101x3+R50_B16+B16+M_B16"),
         plots = list(
             list(what = "plot_uncerts", args = list(width = 7, height = 7))
         )
@@ -183,7 +185,7 @@ conf_10v100 <- list(
 
 conf_100v10 <- list(
     list(
-        config = list(combining_method = "logreg_torch", coupling_method = "m2", nets = "B16+M_B16+R101x3+R50x1+R50_B16"),
+        config = list(combining_method = "logreg_torch_no_interc", coupling_method = "m2", nets = "R50x1+R101x3+R50_B16+B16+M_B16"),
         plots = list(
             list(what = "plot_uncerts", args = list(width = 4, height = 4)),
             list(what = "plot_curve", args = list(plotted_curve = "prc", width = 4, height = 4.5))
@@ -191,8 +193,9 @@ conf_100v10 <- list(
     )
 )
 
-base_dir_C10 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
-base_dir_C100 <- "/mnt/d/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
+base_dir_C10 <- "/home/mordechaj/school/disertation/data/cifar_ood/C10vsC100_ens"
+base_dir_C100 <- "/home/mordechaj/school/disertation/data/cifar_ood/C100vsC10_ens"
+
 
 plot_select_configs(base_dir_C10, dts = "C10vC100", sel_configs = conf_10v100)
 plot_select_configs(base_dir_C100, dts = "C100vC10", sel_configs = conf_100v10)

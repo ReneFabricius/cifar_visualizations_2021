@@ -6,7 +6,7 @@ library(ggplot2)
 
 source("cifar_ood/curves_utils.R")
 
-plot_per_cp <- function(dir, dts, outputs_folder = "cifar_ood")
+plot_per_cp <- function(dir, dts, outputs_folder = "cifar_ood_new")
 {
     net_curves <- get_net_curves(dir = dir)
     cal_curves <- get_cal_curves(dir = dir)
@@ -80,8 +80,8 @@ plot_per_cp <- function(dir, dts, outputs_folder = "cifar_ood")
 }
 
 
-base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
-base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
+base_dir_C10 <- "/home/mordechaj/school/disertation/cifar_ood/C10vsC100_ens" 
+base_dir_C100 <- "/home/mordechaj/school/disertation/cifar_ood/C100vsC10_ens" 
 
 plot_per_cp(dir = base_dir_C10, dts = "C10vC100")
 plot_per_cp(dir = base_dir_C100, dts = "C100vC10")

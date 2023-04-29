@@ -119,7 +119,7 @@ plot_det_metrics <- function(dir, dts)
         )))
     }
 
-    process_co <- function(x, outputs_folder = "cifar_ood")
+    process_co <- function(x, outputs_folder = "cifar_ood_new")
     {
         print(sprintf("Processing combining method: %s", x["combining_method"]))
         pdf(file.path(outputs_folder,paste0(dts, "_metrics_", x["combining_method"], ".pdf")))
@@ -135,7 +135,8 @@ plot_det_metrics <- function(dir, dts)
     apply(comb_methods, 1, process_co)
 }
 
-base_dir_C10 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C10vsC100_metrics"
-base_dir_C100 <- "D:/skola/1/weighted_ensembles/tests/test_cifar_ood_2022/C100vsC10_metrics"
+base_dir_C10 <- "/home/mordechaj/school/disertation/data/cifar_ood/C10vsC100_ens" 
+base_dir_C100 <- "/home/mordechaj/school/disertation/data/cifar_ood/C100vsC10_ens" 
+
 plot_det_metrics(base_dir_C10, "C10vC100")
 plot_det_metrics(base_dir_C100, "C100vC10")
