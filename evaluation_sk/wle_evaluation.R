@@ -88,7 +88,7 @@ load_ens_dfs <- function(base_dir, comb_methods = NULL, excl_networks = NULL, in
     return(list(ens_cal_plt_df, ens_pwc_plt_df))
 }
 
-plot_nets <- function(base_dir, dtset, output_dir = "evaluation_sk")
+plot_nets <- function(base_dir, dtset, output_dir = "evaluation_sk", size = c(7, 7))
 {
     print("Plotting nets")
     net_df <- read.csv(file.path(base_dir, "net_metrics.csv"))
@@ -142,10 +142,11 @@ plot_nets <- function(base_dir, dtset, output_dir = "evaluation_sk")
         theme(
             axis.text.x = element_blank(),
             panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank())
+            panel.grid.minor = element_blank()) +
+        guides(color = guide_legend(title = "sieť"))
 
     plot_name <- file.path(output_dir, paste0(dtset, "_net_metrics.pdf"))
-    ggsave(plot = nets_plot, filename = plot_name, device = cairo_pdf)
+    ggsave(plot = nets_plot, filename = plot_name, device = cairo_pdf, width = size[1], height = size[2])
 }
 
 plot_ensembles <- function(base_dir, dtset, co_m_subset = NULL, constit_num = NULL, cust_name = NULL, size = c(7, 7),
@@ -1001,6 +1002,8 @@ plot_final_configs_IMN <- function(
 plot_improvements_topls <- function(base_dir, dtset, over = "best", comb_methods = NULL, output_dir = "imagenet_topl")
 {
     list[ens_cal_df, ens_pwc_df] <- load_ens_dfs(base_dir = base_dir, comb_methods = comb_methods)
+    topl_sizes <- c(5, 10, 25, 50, 100, 500, 1000)
+    ens_pwc_df <- ens_pwc_df %>% filter(topl %in% topl_sizes)
     ens_pwc_df$topl <- as.factor(ens_pwc_df$topl)
     small_box_width <- 0.4
     small_box_size <- 0.9
@@ -1011,38 +1014,66 @@ plot_improvements_topls <- function(base_dir, dtset, over = "best", comb_methods
     {
         ens_cal_plt_df <- ens_cal_df
         ens_pwc_plt_df <- ens_pwc_df %>% filter(combining_method == co_m)
-        acc_plot <- ggplot() +
-        geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
-        geom_boxplot(
-            data = ens_cal_plt_df,
-            mapping = aes(y = !! sym(paste0("acc1_imp_", over)), color = "TemperatureScaling",
-                x = big_box_x),
-            width = big_box_width
-            ) +
-        (
-            geom_boxplot(
-            data = ens_pwc_plt_df,
-            mapping = aes(
-                x = topl, y = !! sym(paste0("acc1_imp_", over)),
-                colour2 = coupling_method
-            ),
-            size = small_box_size, width = small_box_width,
-            position = position_dodge(width = 0.65)
-            ) %>%
-            rename_geom_aes(new_aes = c("colour" = "colour2"))
-        ) +
-        scale_x_discrete() +
-        scale_colour_brewer(
-            aesthetics = "colour2", palette = 2,
-            name = "párová zväzovacia metóda", type = "qual"
-        ) +
-        ylab("presnosť") +
-        scale_color_manual(values = c("black"), name = "baseline") +
-        theme_classic() +
-        theme(
-            axis.text.x = element_text(angle = 90),
-            axis.title.x = element_blank()
-        )
+
+        processing_top5_acc <- ("accuracy5" %in% colnames(ens_pwc_plt_df)) & (dtset == "IMNET")
+
+        if (!processing_top5_acc)
+        {
+            acc_plot_params <- list(list(metric = "acc1_imp_", name = "presnosť"))
+        }
+        else
+        {
+            acc_plot_params <- list(
+                list(metric = "acc1_imp_", name = "presnosť top-1"),
+                list(metric = "acc5_imp_", name = "presnosť top-5")
+            )
+        }
+
+        acc_plots <- list()
+        for (i in seq_along(acc_plot_params))
+        {
+            acc_plots[[i]] <- ggplot() +
+                geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
+                geom_boxplot(
+                    data = ens_cal_plt_df,
+                    mapping = aes(y = !! sym(paste0(acc_plot_params[[i]][["metric"]], over)), color = "TemperatureScaling",
+                        x = big_box_x),
+                    width = big_box_width
+                    ) +
+                (
+                    geom_boxplot(
+                    data = ens_pwc_plt_df,
+                    mapping = aes(
+                        x = topl, y = !! sym(paste0(acc_plot_params[[i]][["metric"]], over)),
+                        colour2 = coupling_method
+                    ),
+                    size = small_box_size, width = small_box_width,
+                    position = position_dodge(width = 0.65)
+                    ) %>%
+                    rename_geom_aes(new_aes = c("colour" = "colour2"))
+                ) +
+                scale_x_discrete() +
+                scale_colour_brewer(
+                    aesthetics = "colour2", palette = 2,
+                    name = "párová zväzovacia metóda", type = "qual"
+                ) +
+                ylab(acc_plot_params[[i]][["name"]]) +
+                scale_color_manual(values = c("black"), name = "baseline") +
+                theme_classic() +
+                theme(
+                    axis.text.x = element_text(angle = 90),
+                    axis.title.x = element_blank()
+                )
+        } 
+
+        if (processing_top5_acc)
+        {
+            acc_plot <- acc_plots[[1]] / acc_plots[[2]]
+        }
+        else 
+        {
+            acc_plot <- acc_plots[[1]]
+        }
 
         nll_plot <- ggplot() +
         geom_hline(mapping = aes(yintercept = 0.0), color = "red") +
@@ -1113,8 +1144,8 @@ plot_improvements_topls <- function(base_dir, dtset, over = "best", comb_methods
             #    "Zlepšenia ansámblov oproti ", ifelse(over == "best", "najlepšej", "priemeru"), " zo sietí")
             #)
 
-        plot_name <- file.path(output_dir, paste0(dtset, "_ensemble_improvements_over_", over, "_co_m_", co_m, ".pdf"))
-        ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 9, height = 5)
+        plot_name <- file.path(output_dir, paste0(dtset, "_ensemble_improvements_topls_over_", over, "_co_", co_m, ".pdf"))
+        ggsave(plot = res_plot, filename = plot_name, device = cairo_pdf, width = 9, height = 7)
     }
 }
 
@@ -1126,7 +1157,7 @@ plot_improvements_size_split <- function(
 {
     print(paste0(
         "Plotting size split improvements",
-        ifelse(topl_strategy == "none", "", paste0(" topl_strat: ", topl_strat))))
+        ifelse(topl_strategy == "none", "", paste0(" topl_strat: ", topl_strategy))))
     list[cal_df, pwc_df] <- load_ens_dfs(
         base_dir = source_dir,
         excl_networks = excl_nets,
@@ -1295,10 +1326,10 @@ plot_improvements_size_split <- function(
 
     res_plot <- acc_plot / nll_plot / ece_plot + plot_layout(guides = "collect")
 
-    if (!is.null(excl_nets))
-    {
-        res_plot <- res_plot + plot_annotation(title = paste(c("Excluding", excl_nets), collapse = " "))
-    }
+    #if (!is.null(excl_nets))
+    #{
+    #    res_plot <- res_plot + plot_annotation(title = paste(c("Excluding", excl_nets), collapse = " "))
+    #}
 
     #+
         #plot_annotation(title = paste0(
@@ -1310,7 +1341,7 @@ plot_improvements_size_split <- function(
         paste0(
             dtset, "_ensemble_improvements_per_size_over_", over,
             "_topl_",
-            ifelse(topl_strategy == "none", "full", topl_strat),
+            ifelse(topl_strategy == "none", "full", topl_strategy),
             ifelse(is.null(excl_nets), "", paste0("_excluding_", paste(excl_nets, collapse = "+"))),
             ifelse(is.null(incl_nets), "", paste0("_including_", paste(incl_nets, collapse = "+"))),
             ".pdf"))
@@ -1320,13 +1351,15 @@ plot_improvements_size_split <- function(
 improvement_tests <- function(
     source_dir, output_dir, dtset = "IMN",
     excl_nets = NULL, incl_nets = NULL,
-    topl_strategy = "none", configs = NULL)
+    topl_strategy = "none", configs = NULL,
+    combining_methods = NULL)
 {
     print("Performing tests")
     list[cal_df, pwc_df] <- load_ens_dfs(
         base_dir = source_dir,
         excl_networks = excl_nets,
-        incl_networks = incl_nets)
+        incl_networks = incl_nets,
+        comb_methods = combining_methods)
 
     if (topl_strategy != "none")
     {
@@ -1336,7 +1369,7 @@ improvement_tests <- function(
         }
         else if (topl_strategy == "fast")
         {
-            pwc_df <- pwc_df %>% filter(topl < max(topl))
+            pwc_df <- pwc_df %>% filter(topl == 10)
         }
 
         pwc_df <- droplevels(pwc_df)
@@ -1412,6 +1445,11 @@ improvement_tests <- function(
                             mutate(combination_id = factor(combination_id + 1000 * replication)) %>%
                             select(-c(replication))
                     }
+                    else 
+                    {
+                        cs_data <- cs_data %>%
+                            mutate(combination_id = factor(combination_id))
+                    }
 
                     test <- symmetry_test(
                         formula = as.formula(paste0(met, " ~ method | combination_id")),
@@ -1451,7 +1489,7 @@ improvement_tests <- function(
         paste0(
             dtset, "_p_values_",
             "_topl_",
-            ifelse(topl_strategy == "none", "full", topl_strat),
+            ifelse(topl_strategy == "none", "full", topl_strategy),
             ifelse(is.null(excl_nets), "", paste0("_excluding_", paste(excl_nets, collapse = "+"))),
             ifelse(is.null(incl_nets), "", paste0("_including_", paste(incl_nets, collapse = "+"))),
             ".csv"))
@@ -1512,24 +1550,42 @@ plot_imnet_eval <- function()
     source_dir <- "/home/mordechaj/school/disertation/data/imagenet/eval2"
     source_dir_topl <- "/home/mordechaj/school/disertation/data/imagenet/topl"
     dest_dir <- "imagenet_evaluation"
-    plot_final_configs_IMN(base_dir = source_dir, fast_and_full = list(
-        fast = list(combining_method = "logreg", coupling_method = "bc"),
-        full = list(combining_method = "grad_m2", coupling_method = "m2")),
-        size = c(5, 5))
+    #plot_final_configs_IMN(base_dir = source_dir, fast_and_full = list(
+    #    fast = list(combining_method = "logreg", coupling_method = "bc"),
+    #    full = list(combining_method = "grad_m2", coupling_method = "m2")),
+    #    size = c(5, 5))
 
     plot_improvements_topls(base_dir = source_dir_topl, dtset = "IMNET")
-    plot_nets(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir)
+    improvement_tests(source_dir = source_dir, output_dir = dest_dir, dtset = "IMN",
+        topl_strategy = "full", combining_methods = c("grad_m2", "logreg_torch_no_interc"))
+    improvement_tests(source_dir = source_dir, output_dir = dest_dir, dtset = "IMN",
+        topl_strategy = "fast", combining_methods = c("grad_m2", "logreg_torch_no_interc"))
+
+    #plot_nets(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir)
     #plot_ensembles(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full")
     #plot_ensembles(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast")
     #plot_dependencies(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir)
-    comp_tables(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full")
-    comp_tables(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast")
-    plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full", ece_lim = c(-0.2, 0.05))
-    plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast")
+    #comp_tables(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full")
+    #comp_tables(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast")
     plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full",
-        ece_lim = c(-0.2, 0.05), split_ens_sizes = T, size = c(7, 4*7))
+        comb_methods = c("grad_m2", "logreg_torch_no_interc"))
     plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast",
-        split_ens_sizes = T, size = c(7, 4*7))
+        comb_methods = c("grad_m2", "logreg_torch_no_interc"))
+
+    plot_improvements_size_split(source_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strategy = "full",
+        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"))
+    plot_improvements_size_split(source_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strategy = "fast",
+        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"))
+
+    plot_improvements_size_split(source_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strategy = "full",
+        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"), over = "baseline")
+    plot_improvements_size_split(source_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strategy = "fast",
+        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"), over = "baseline")
+
+    #plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "full",
+    #    ece_lim = c(-0.2, 0.05), split_ens_sizes = T, size = c(7, 4*7))
+    #plot_improvements(base_dir = source_dir, dtset = "IMNET", output_dir = dest_dir, topl_strat = "fast",
+    #    split_ens_sizes = T, size = c(7, 4*7))
 }
 
 #plot_imnet_eval()
@@ -1550,58 +1606,58 @@ plot_half_cifar_improvements <- function()
     source <- "/home/mordechaj/school/disertation/data/cifar/half_cif100"
     dest_dir <- "half_cifar_evaluation"
 
-    improvement_tests(
-        source_dir = source, output_dir = dest_dir, dtset = "C100",
-    )
+    #improvement_tests(
+    #    source_dir = source, output_dir = dest_dir, dtset = "C100",
+    #)
 
-    plot_improvements_size_split(
-        source_dir = source, dtset = "C100", output_dir = dest_dir,
-        configs = list(
-            "grad_m2 + m2" = "grad_m2 + m2",
-            "logreg_no_interc + m1" = "logreg_no_interc + m1"))
+    #plot_improvements_size_split(
+    #    source_dir = source, dtset = "C100", output_dir = dest_dir,
+    #    configs = list(
+    #        "grad_m2 + m2" = "grad_m2 + m2",
+    #        "logreg_no_interc + m1" = "logreg_no_interc + m1"))
 
     plot_improvements_size_split(
         source_dir = source, dtset = "C100", output_dir = dest_dir,
         configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
         excl_nets = c("clip_ViT-B-32_LP"))
 
-    plot_improvements_size_split(
-        source_dir = source, dtset = "C100", output_dir = dest_dir,
-        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
-        incl_nets = c("clip_ViT-B-32_LP"))
+    #plot_improvements_size_split(
+    #    source_dir = source, dtset = "C100", output_dir = dest_dir,
+    #    configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
+    #    incl_nets = c("clip_ViT-B-32_LP"))
 
-    plot_improvements_size_split(
-        source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
-        configs = list(
-            "grad_m2 + m2" = "grad_m2 + m2",
-            "logreg_no_interc + m1" = "logreg_no_interc + m1"))
+    #plot_improvements_size_split(
+    #    source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
+    #    configs = list(
+    #        "grad_m2 + m2" = "grad_m2 + m2",
+    #        "logreg_no_interc + m1" = "logreg_no_interc + m1"))
 
-    plot_improvements_size_split(
-        source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
-        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
-        excl_nets = c("clip_ViT-B-32_LP"))
+    #plot_improvements_size_split(
+    #    source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
+    #    configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
+    #    excl_nets = c("clip_ViT-B-32_LP"))
 
-    plot_improvements_size_split(
-        source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
-        configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
-        incl_nets = c("clip_ViT-B-32_LP"))
+    #plot_improvements_size_split(
+    #    source_dir = source, dtset = "C100", output_dir = dest_dir, over = "baseline",
+    #    configs = list("grad_m2 + m2" = "grad_m2 + m2", "logreg_no_interc + m1" = "logreg_no_interc + m1"),
+    #    incl_nets = c("clip_ViT-B-32_LP"))
 
-    plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir)
-    plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
-        excl_networks = c("clip_ViT-B-32_LP"))
-    plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
-        incl_networks = c("clip_ViT-B-32_LP"))
-       
-    plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
-        split_ens_sizes = T, size = c(7, 3*7))
-    plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
-        excl_networks = c("clip_ViT-B-32_LP"),
-        split_ens_sizes = T, size = c(7, 2*7))
-    plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
-        incl_networks = c("clip_ViT-B-32_LP"),
-        split_ens_sizes = T, size = c(7, 3*7))
+    #plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir)
+    #plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
+    #    excl_networks = c("clip_ViT-B-32_LP"))
+    #plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
+    #    incl_networks = c("clip_ViT-B-32_LP"))
+    #   
+    #plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
+    #    split_ens_sizes = T, size = c(7, 3*7))
+    #plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
+    #    excl_networks = c("clip_ViT-B-32_LP"),
+    #    split_ens_sizes = T, size = c(7, 2*7))
+    #plot_improvements(base_dir = source, dtset = "C100", output_dir = dest_dir,
+    #    incl_networks = c("clip_ViT-B-32_LP"),
+    #    split_ens_sizes = T, size = c(7, 3*7))
 
-    plot_nets(base_dir = source, dtset = "C100", output_dir = dest_dir)
+    #plot_nets(base_dir = source, dtset = "C100", output_dir = dest_dir, size = c(5, 4))
 }
 
 plot_half_cifar_improvements()
